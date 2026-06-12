@@ -107,10 +107,14 @@ export function ProductPage({
           </button>
           <h2 className="text-headline-md text-on-surface font-semibold">Manajemen Produk</h2>
         </div>
-        <Button onClick={handleOpenAdd} variant="primary" className="py-2 px-4">
+        <button
+          type="button"
+          onClick={handleOpenAdd}
+          className="rounded-lg font-headline-md font-semibold text-lg transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-primary flex items-center justify-center gap-2 cursor-pointer bg-primary text-on-primary hover:bg-surface-tint py-2 px-4"
+        >
           <span className="material-symbols-outlined">add</span>
           Tambah Produk
-        </Button>
+        </button>
       </header>
 
       {/* Main List Area */}
@@ -228,7 +232,7 @@ export function ProductPage({
           />
 
           {/* Form Modal Box */}
-          <div className="bg-surface rounded-2xl w-full max-w-md border border-outline-variant shadow-2xl relative z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-surface rounded-2xl w-full max-w-md border border-outline-variant shadow-2xl relative z-10 overflow-hidden">
             <div className="p-md border-b border-outline-variant flex justify-between items-center bg-surface-container-lowest">
               <h3 className="text-headline-md font-semibold text-on-surface">
                 {editingProduct ? 'Edit Produk' : 'Tambah Produk Baru'}
@@ -306,12 +310,19 @@ export function ProductPage({
 
               {/* Form Actions */}
               <div className="pt-sm flex gap-md border-t border-outline-variant mt-lg">
-                <Button variant="outline" onClick={() => setIsModalOpen(false)} className="flex-1 py-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 py-2 rounded-lg border-2 border-primary text-primary hover:bg-surface-tint/10 bg-surface-container-lowest font-headline-md font-semibold text-lg cursor-pointer"
+                >
                   Batal
-                </Button>
-                <Button variant="primary" type="submit" className="flex-1 py-2">
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 rounded-lg bg-primary text-on-primary hover:bg-surface-tint font-headline-md font-semibold text-lg cursor-pointer"
+                >
                   Simpan
-                </Button>
+                </button>
               </div>
             </form>
           </div>
