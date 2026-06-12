@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from './components/Sidebar'
 import { Header } from './components/Header'
 import { ProductCard } from './components/ProductCard'
@@ -9,9 +10,24 @@ import { useCart } from './hooks/useCart'
 import { useProducts } from './hooks/useProducts'
 
 function App() {
-  const [currentTab, setCurrentTab] = useState('kasir')
+  const location = useLocation()
+  const navigate = useNavigate()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
+
+  // Derive active tab from path (e.g., "/" -> "kasir", "/produk" -> "produk")
+  const currentTab = useMemo(() => {
+    const path = location.pathname.replace(/^\//, '')
+    return path || 'kasir'
+  }, [location.pathname])
+
+  const handleTabSelect = (tabId) => {
+    if (tabId === 'kasir') {
+      navigate('/')
+    } else {
+      navigate(`/${tabId}`)
+    }
+  }
 
   const {
     products,
@@ -51,7 +67,7 @@ function App() {
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         currentTab={currentTab}
-        onTabSelect={setCurrentTab}
+        onTabSelect={handleTabSelect}
       />
 
       {/* Conditionally render screens depending on active tab */}
