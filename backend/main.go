@@ -8,6 +8,12 @@ import (
 	"os"
 	"time"
 
+	"point-of-sale/backend/app/handlers"
+	"point-of-sale/backend/app/middleware"
+	"point-of-sale/backend/app/models"
+	"point-of-sale/backend/app/repositories"
+	"point-of-sale/backend/app/services"
+
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -16,12 +22,12 @@ import (
 // Global DB instance
 var DB *gorm.DB
 
-// Response represents the JSON structure for endpoint responses
+// Response represents the JSON structure for health status
 type Response struct {
-	Status      string    `json:"status"`
-	Database    string    `json:"database"`
-	Message     string    `json:"message"`
-	Timestamp   time.Time `json:"timestamp"`
+	Status    string    `json:"status"`
+	Database  string    `json:"database"`
+	Message   string    `json:"message"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 func main() {
@@ -33,16 +39,45 @@ func main() {
 	// Connect to database
 	connectDB()
 
+	// Run migrations
+	runMigrations()
+
+	// Seed initial data if empty
+	seedDatabase()
+
+	// Setup Repositories
+	productRepo := repositories.NewProductRepository(DB)
+	orderRepo := repositories.NewOrderRepository(DB)
+
+	// Setup Services
+	productService := services.NewProductService(productRepo)
+	orderService := services.NewOrderService(DB, orderRepo, productRepo)
+
+	// Setup Handlers
+	productHandler := handlers.NewProductHandler(productService)
+	orderHandler := handlers.NewOrderHandler(orderService)
+
 	// Create request router
 	mux := http.NewServeMux()
 
-	// Register routes
+	// Health check
 	mux.HandleFunc("GET /api/health", healthHandler)
 
-	// Wrap mux with CORS middleware
-	handler := enableCORS(mux)
+	// Product endpoints
+	mux.HandleFunc("GET /api/products", productHandler.GetAll)
+	mux.HandleFunc("GET /api/products/{id}", productHandler.GetByID)
+	mux.HandleFunc("POST /api/products", productHandler.Create)
+	mux.HandleFunc("PUT /api/products/{id}", productHandler.Update)
+	mux.HandleFunc("DELETE /api/products/{id}", productHandler.Delete)
 
-	port := getEnv("PORT", "8080")
+	// Order/Transaction endpoints
+	mux.HandleFunc("POST /api/orders", orderHandler.Checkout)
+	mux.HandleFunc("GET /api/orders", orderHandler.GetAll)
+
+	// Apply Middlewares (Logger -> CORS -> Recovery)
+	handler := middleware.Recovery(middleware.CORS(middleware.Logger(mux)))
+
+	port := getEnv("PORT", "8081")
 	fmt.Printf("Backend server running on http://localhost:%s\n", port)
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
@@ -67,11 +102,43 @@ func connectDB() {
 	log.Println("✅ Database connected successfully")
 }
 
+// runMigrations automigrates database models
+func runMigrations() {
+	err := DB.AutoMigrate(
+		&models.Product{},
+		&models.Order{},
+		&models.OrderItem{},
+	)
+	if err != nil {
+		log.Fatalf("❌ Auto-migration failed: %v", err)
+	}
+	log.Println("✅ Database migration completed successfully")
+}
+
+// seedDatabase seeds initial data if table is empty
+func seedDatabase() {
+	var count int64
+	DB.Model(&models.Product{}).Count(&count)
+	if count == 0 {
+		defaultProducts := []models.Product{
+			{Name: "Nasi Goreng", Category: "Makanan", Price: 25000, Icon: "restaurant", SKU: "KP-NASIGORENG-1001", Stock: 100},
+			{Name: "Es Teh Manis", Category: "Minuman", Price: 5000, Icon: "local_cafe", SKU: "KP-ESTEHMANIS-1002", Stock: 100},
+			{Name: "Ayam Bakar", Category: "Makanan", Price: 30000, Icon: "set_meal", SKU: "KP-AYAMBAKAR-1003", Stock: 100},
+		}
+
+		for _, p := range defaultProducts {
+			if err := DB.Create(&p).Error; err != nil {
+				log.Printf("⚠️  Failed to seed product %s: %v", p.Name, err)
+			}
+		}
+		log.Println("🌱 Database seeded with default products")
+	}
+}
+
 // healthHandler returns a status check JSON response and pings the DB
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	dbStatus := "Healthy"
 	
-	// Ping DB
 	sqlDB, err := DB.DB()
 	if err != nil {
 		dbStatus = "Unhealthy (Failed to get DB instance)"
@@ -91,22 +158,6 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(res); err != nil {
 		log.Printf("Error encoding response: %v", err)
 	}
-}
-
-// enableCORS middleware adds basic CORS headers to incoming requests
-func enableCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
 }
 
 // getEnv gets environment variable or returns fallback

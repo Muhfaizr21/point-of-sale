@@ -1,0 +1,10 @@
+# Binaries
+server
+server.exe
+*.exe
+
+# Environment config
+.env
+
+# Dependencies
+vendor/
