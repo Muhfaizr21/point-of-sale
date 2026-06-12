@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { Button } from './common/Button'
 import { Input } from './common/Input'
 
@@ -42,7 +43,6 @@ export function ProductPage({
 
   // Open modal for add
   const handleOpenAdd = () => {
-    alert('handleOpenAdd clicked')
     setEditingProduct(null)
     setFormName('')
     setFormCategory('Makanan')
@@ -224,7 +224,7 @@ export function ProductPage({
       </div>
 
       {/* Form Dialog Modal */}
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-md">
           {/* Backdrop */}
           <div
@@ -327,7 +327,8 @@ export function ProductPage({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
