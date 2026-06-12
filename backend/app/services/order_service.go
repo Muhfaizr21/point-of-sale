@@ -14,6 +14,8 @@ import (
 type OrderService interface {
 	Checkout(ctx context.Context, req *models.CreateOrderRequest) (*models.Order, error)
 	GetAllOrders(ctx context.Context) ([]models.Order, error)
+	GetFilteredOrders(ctx context.Context, query *models.OrderQuery) (*models.OrderListResponse, error)
+	GetOrderByID(ctx context.Context, id uint) (*models.Order, error)
 }
 
 type orderService struct {
@@ -34,9 +36,59 @@ func (s *orderService) GetAllOrders(ctx context.Context) ([]models.Order, error)
 	return s.orderRepo.GetAll(ctx)
 }
 
+func (s *orderService) GetOrderByID(ctx context.Context, id uint) (*models.Order, error) {
+	return s.orderRepo.GetByID(ctx, id)
+}
+
+func (s *orderService) GetFilteredOrders(ctx context.Context, query *models.OrderQuery) (*models.OrderListResponse, error) {
+	// Set defaults
+	if query.Page < 1 {
+		query.Page = 1
+	}
+	if query.Limit < 1 {
+		query.Limit = 10
+	}
+	if query.SortOrder == "" {
+		query.SortOrder = "desc"
+	}
+	if query.SortBy == "" {
+		query.SortBy = "created_at"
+	}
+
+	orders, total, err := s.orderRepo.GetFiltered(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	totalPages := int(total) / query.Limit
+	if int(total)%query.Limit > 0 {
+		totalPages++
+	}
+
+	return &models.OrderListResponse{
+		Data: orders,
+		Pagination: models.Pagination{
+			Page:       query.Page,
+			Limit:      query.Limit,
+			TotalItems: int(total),
+			TotalPages: totalPages,
+		},
+	}, nil
+}
+
 func (s *orderService) Checkout(ctx context.Context, req *models.CreateOrderRequest) (*models.Order, error) {
 	if len(req.Items) == 0 {
 		return nil, models.NewAPIError(models.ErrInvalidInput, "Keranjang belanja tidak boleh kosong", 400)
+	}
+
+	// Set defaults
+	customer := req.Customer
+	if customer == "" {
+		customer = "Umum"
+	}
+	discount := req.Discount
+	if discount < 0 {
+		discount = 0
 	}
 
 	var finalOrder *models.Order
@@ -70,20 +122,28 @@ func (s *orderService) Checkout(ctx context.Context, req *models.CreateOrderRequ
 
 			// Calculate subtotal and build order item
 			itemPrice := product.Price
+			if reqItem.VariationName != "" {
+				for _, v := range product.Variations {
+					if v.Name == reqItem.VariationName {
+						itemPrice = v.Price
+						break
+					}
+				}
+			}
 			itemTotal := itemPrice * reqItem.Quantity
 			subtotal += itemTotal
 
 			orderItems = append(orderItems, models.OrderItem{
-				ProductID:   product.ID,
-				ProductName: product.Name,
-				Price:       itemPrice,
-				Quantity:    reqItem.Quantity,
+				ProductID:     product.ID,
+				ProductName:   product.Name,
+				VariationName: reqItem.VariationName,
+				Price:         itemPrice,
+				Quantity:      reqItem.Quantity,
 			})
 		}
 
-		// Calculate tax and total
-		tax := int(float64(subtotal) * 0.1) // 10% tax
-		total := subtotal + tax
+		// Calculate total
+		total := subtotal - discount
 
 		// Generate invoice number
 		invoiceNumber := s.generateInvoiceNumber()
@@ -91,10 +151,15 @@ func (s *orderService) Checkout(ctx context.Context, req *models.CreateOrderRequ
 		// Save order
 		order := &models.Order{
 			InvoiceNumber: invoiceNumber,
-			Subtotal:      subtotal,
-			Tax:           tax,
-			Total:         total,
+			Customer:     customer,
+			Cashier:      "Admin",
+			Subtotal:     subtotal,
+			Tax:          0,
+			Discount:     discount,
+			Total:        total,
 			PaymentMethod: req.PaymentMethod,
+			PaymentStatus: "COMPLETED",
+			OrderStatus:   "COMPLETED",
 			OrderItems:    orderItems,
 		}
 

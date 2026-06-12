@@ -52,16 +52,37 @@ func main() {
 	// Setup Services
 	productService := services.NewProductService(productRepo)
 	orderService := services.NewOrderService(DB, orderRepo, productRepo)
+	analyticsService := services.NewAnalyticsService(DB, orderRepo)
 
 	// Setup Handlers
 	productHandler := handlers.NewProductHandler(productService)
 	orderHandler := handlers.NewOrderHandler(orderService)
+	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
+	uploadHandler := handlers.NewUploadHandler()
+
+	categoryRepo := repositories.NewCategoryRepository(DB)
+	categoryService := services.NewCategoryService(categoryRepo, productRepo)
+	categoryHandler := handlers.NewCategoryHandler(categoryService)
+
+	targetRepo := repositories.NewTargetRepository(DB)
+	targetService := services.NewTargetService(targetRepo)
+	targetHandler := handlers.NewTargetHandler(targetService)
 
 	// Create request router
 	mux := http.NewServeMux()
 
 	// Health check
 	mux.HandleFunc("GET /api/health", healthHandler)
+
+	// Image Upload & Serving
+	mux.HandleFunc("POST /api/upload", uploadHandler.UploadImage)
+	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
+
+	// Target endpoints
+	mux.HandleFunc("GET /api/targets", targetHandler.GetAll)
+	mux.HandleFunc("GET /api/targets/{date}", targetHandler.GetByDate)
+	mux.HandleFunc("POST /api/targets", targetHandler.Upsert)
+	mux.HandleFunc("DELETE /api/targets/{date}", targetHandler.Delete)
 
 	// Product endpoints
 	mux.HandleFunc("GET /api/products", productHandler.GetAll)
@@ -70,9 +91,19 @@ func main() {
 	mux.HandleFunc("PUT /api/products/{id}", productHandler.Update)
 	mux.HandleFunc("DELETE /api/products/{id}", productHandler.Delete)
 
+	// Category endpoints
+	mux.HandleFunc("GET /api/categories", categoryHandler.GetAll)
+	mux.HandleFunc("POST /api/categories", categoryHandler.Create)
+	mux.HandleFunc("PUT /api/categories/{id}", categoryHandler.Update)
+	mux.HandleFunc("DELETE /api/categories/{id}", categoryHandler.Delete)
+
 	// Order/Transaction endpoints
 	mux.HandleFunc("POST /api/orders", orderHandler.Checkout)
 	mux.HandleFunc("GET /api/orders", orderHandler.GetAll)
+	mux.HandleFunc("GET /api/orders/{id}", orderHandler.GetByID)
+
+	// Analytics endpoints
+	mux.HandleFunc("GET /api/analytics", analyticsHandler.GetAnalytics)
 
 	// Apply Middlewares (Logger -> CORS -> Recovery)
 	handler := middleware.Recovery(middleware.CORS(middleware.Logger(mux)))
@@ -105,9 +136,11 @@ func connectDB() {
 // runMigrations automigrates database models
 func runMigrations() {
 	err := DB.AutoMigrate(
+		&models.Category{},
 		&models.Product{},
 		&models.Order{},
 		&models.OrderItem{},
+		&models.DailyTarget{},
 	)
 	if err != nil {
 		log.Fatalf("❌ Auto-migration failed: %v", err)
@@ -117,13 +150,36 @@ func runMigrations() {
 
 // seedDatabase seeds initial data if table is empty
 func seedDatabase() {
+	var countCat int64
+	DB.Model(&models.Category{}).Count(&countCat)
+	if countCat == 0 {
+		defaultCategories := []models.Category{
+			{Name: "Makanan"},
+			{Name: "Minuman"},
+			{Name: "Cemilan"},
+		}
+		for _, c := range defaultCategories {
+			if err := DB.Create(&c).Error; err != nil {
+				log.Printf("⚠️  Failed to seed category %s: %v", c.Name, err)
+			}
+		}
+		log.Println("🌱 Database seeded with default categories")
+	}
+
 	var count int64
 	DB.Model(&models.Product{}).Count(&count)
 	if count == 0 {
 		defaultProducts := []models.Product{
-			{Name: "Nasi Goreng", Category: "Makanan", Price: 25000, Icon: "restaurant", SKU: "KP-NASIGORENG-1001", Stock: 100},
-			{Name: "Es Teh Manis", Category: "Minuman", Price: 5000, Icon: "local_cafe", SKU: "KP-ESTEHMANIS-1002", Stock: 100},
-			{Name: "Ayam Bakar", Category: "Makanan", Price: 30000, Icon: "set_meal", SKU: "KP-AYAMBAKAR-1003", Stock: 100},
+			{Name: "Nasi Goreng Spesial", Category: "Makanan", Price: 25000, Icon: "restaurant", SKU: "FD-NASIGORENG", Stock: 100},
+			{Name: "Ayam Bakar Madu", Category: "Makanan", Price: 30000, Icon: "set_meal", SKU: "FD-AYAMBAKAR", Stock: 100},
+			{Name: "Mie Goreng Seafood", Category: "Makanan", Price: 28000, Icon: "ramen_dining", SKU: "FD-MIEGORENG", Stock: 100},
+			{Name: "Sate Ayam Madura", Category: "Makanan", Price: 20000, Icon: "kebab_dining", SKU: "FD-SATEAYAM", Stock: 100},
+			{Name: "Es Teh Manis", Category: "Minuman", Price: 5000, Icon: "local_cafe", SKU: "BV-ESTEH", Stock: 100},
+			{Name: "Es Jeruk Peras", Category: "Minuman", Price: 8000, Icon: "local_drink", SKU: "BV-ESJERUK", Stock: 100},
+			{Name: "Kopi Susu Gula Aren", Category: "Minuman", Price: 15000, Icon: "coffee", SKU: "BV-KOPISUSU", Stock: 100},
+			{Name: "Jus Alpukat", Category: "Minuman", Price: 12000, Icon: "blender", SKU: "BV-JUSALPUKAT", Stock: 100},
+			{Name: "Roti Bakar Coklat", Category: "Cemilan", Price: 15000, Icon: "bakery_dining", SKU: "SN-ROTIBAKAR", Stock: 100},
+			{Name: "Pisang Goreng Keju", Category: "Cemilan", Price: 12000, Icon: "tapas", SKU: "SN-PISGORENG", Stock: 100},
 		}
 
 		for _, p := range defaultProducts {

@@ -1,16 +1,6 @@
-import React, { useState, useMemo } from 'react'
-import { createPortal } from 'react-dom'
-import { Button } from './common/Button'
+import React, { useState, useMemo, useEffect } from 'react'
 import { Input } from './common/Input'
-
-const ICON_OPTIONS = [
-  { value: 'restaurant', label: 'Makanan / Restoran' },
-  { value: 'local_cafe', label: 'Kopi / Kafe' },
-  { value: 'set_meal', label: 'Lauk / Ikan' },
-  { value: 'bakery_dining', label: 'Roti / Kue' },
-  { value: 'icecream', label: 'Es Krim / Dessert' },
-  { value: 'local_bar', label: 'Minuman Segar' },
-]
+import { apiClient, API_BASE_URL } from '../services/apiClient'
 
 export function ProductPage({
   products,
@@ -22,14 +12,35 @@ export function ProductPage({
   error,
 }) {
   const [searchQuery, setSearchQuery] = useState('')
+  
+  // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
   
-  // Form State
+  // Form state
   const [formName, setFormName] = useState('')
   const [formCategory, setFormCategory] = useState('Makanan')
   const [formPrice, setFormPrice] = useState('')
+  const [formVariations, setFormVariations] = useState([])
   const [formIcon, setFormIcon] = useState('restaurant')
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState('')
+  const [formError, setFormError] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Filter & Sort States
+  const [selectedCategory, setSelectedCategory] = useState('Semua')
+  const [sortField, setSortField] = useState('name')
+  const [sortDirection, setSortDirection] = useState('asc')
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 5
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, selectedCategory, sortField, sortDirection])
 
   // Format price helper
   const formatPrice = (value) => {
@@ -41,57 +52,167 @@ export function ProductPage({
     }).format(value).replace('IDR', 'Rp')
   }
 
-  // Open modal for add
+  // Format input helper
+  const formatInputValue = (val) => {
+    if (!val) return ''
+    return parseInt(val, 10).toLocaleString('id-ID')
+  }
+
+  const handlePriceChange = (value, setter) => {
+    const numericValue = value.replace(/\D/g, '')
+    setter(numericValue)
+  }
+
+  // Navigate to add page (now opens modal)
   const handleOpenAdd = () => {
     setEditingProduct(null)
     setFormName('')
-    setFormCategory('Makanan')
+    setFormCategory(categories.find(c => c !== 'Semua') || '')
     setFormPrice('')
+    setFormVariations([])
     setFormIcon('restaurant')
+    setImageFile(null)
+    setImagePreview('')
+    setFormError(null)
     setIsModalOpen(true)
   }
 
-  // Open modal for edit
+  // Navigate to edit page (now opens modal)
   const handleOpenEdit = (product) => {
     setEditingProduct(product)
     setFormName(product.name)
     setFormCategory(product.category)
     setFormPrice(product.price.toString())
-    setFormIcon(product.icon)
+    setFormVariations(product.variations || [])
+    setFormIcon(product.icon || 'restaurant')
+    setImageFile(null)
+    if (product.icon && (product.icon.startsWith('/') || product.icon.startsWith('http'))) {
+      setImagePreview(product.icon.startsWith('/') ? `${API_BASE_URL}${product.icon}` : product.icon)
+    } else {
+      setImagePreview('')
+    }
+    setFormError(null)
     setIsModalOpen(true)
   }
 
-  // Handle submit form
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setEditingProduct(null)
+  }
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setImageFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!formName || !formPrice) return
-
-    const productData = {
-      id: editingProduct ? editingProduct.id : undefined,
-      name: formName,
-      category: formCategory,
-      price: parseInt(formPrice, 10),
-      icon: formIcon,
+    
+    let basePrice = 0
+    if (formVariations.length > 0) {
+      const variationPrices = formVariations.map(v => parseInt(v.price, 10)).filter(p => !isNaN(p))
+      if (variationPrices.length > 0) {
+        basePrice = Math.min(...variationPrices)
+      }
+    } else {
+      if (!formPrice) return
+      basePrice = parseInt(formPrice, 10)
     }
 
+    if (!formName) return
+    
+    setFormError(null)
+    setIsSubmitting(true)
+
     try {
+      let iconUrl = formIcon
+
+      // If user uploaded a new image file
+      if (imageFile) {
+        const uploadRes = await apiClient.uploadFile('/api/upload', imageFile)
+        iconUrl = uploadRes.url
+      }
+
+      const productData = {
+        id: editingProduct ? editingProduct.id : undefined,
+        name: formName,
+        category: formCategory,
+        price: basePrice,
+        icon: iconUrl,
+        variations: formVariations.map(v => ({ name: v.name, price: parseInt(v.price, 10) })),
+      }
+
       if (editingProduct) {
         await updateProduct(productData)
       } else {
         await addProduct(productData)
       }
-      setIsModalOpen(false)
+      handleCloseModal()
     } catch (err) {
-      alert(`Gagal menyimpan produk: ${err.message}`)
+      setFormError(err.message)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  // Filtered list for local search
-  const filteredList = useMemo(() => {
-    return products.filter((prod) =>
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  // Get all unique categories dynamically
+  const categories = useMemo(() => {
+    const cats = new Set(products.map((p) => p.category))
+    return ['Semua', ...Array.from(cats)]
+  }, [products])
+
+  // Filtered and Sorted list for local search & filter
+  const processedList = useMemo(() => {
+    // 1. Filter by Search Query
+    let result = products.filter((prod) =>
       prod.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
-  }, [products, searchQuery])
+
+    // 2. Filter by Category
+    if (selectedCategory !== 'Semua') {
+      result = result.filter((prod) => prod.category === selectedCategory)
+    }
+
+    // 3. Sort
+    result.sort((a, b) => {
+      let valA = a[sortField]
+      let valB = b[sortField]
+
+      if (typeof valA === 'string') {
+        valA = valA.toLowerCase()
+        valB = valB.toLowerCase()
+      }
+
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+
+    return result
+  }, [products, searchQuery, selectedCategory, sortField, sortDirection])
+
+  // Pagination Logic
+  const totalPages = Math.ceil(processedList.length / ITEMS_PER_PAGE)
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    return processedList.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+  }, [processedList, currentPage])
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-surface-container-low pb-[72px]">
@@ -121,14 +242,30 @@ export function ProductPage({
       {/* Main List Area */}
       <div className="flex-1 overflow-y-auto p-lg hide-scrollbar">
         {/* Search filter row */}
-        <div className="mb-md flex gap-md">
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari nama produk..."
-            icon="search"
-            className="max-w-md w-full"
-          />
+        <div className="mb-md flex flex-col sm:flex-row gap-md sm:items-center justify-between">
+          <div className="w-full sm:w-80">
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari nama produk..."
+              icon="search"
+              className="w-full"
+            />
+          </div>
+          <div className="flex items-center gap-xs">
+            <span className="text-body-md font-semibold text-on-surface-variant">Kategori:</span>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-md py-sm border border-outline-variant bg-surface rounded-lg text-body-md font-semibold text-on-surface cursor-pointer focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+            >
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Responsive Table Wrapper */}
@@ -137,11 +274,47 @@ export function ProductPage({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-surface-container-high border-b border-outline-variant text-label-sm text-on-surface-variant">
-                  <th className="p-md font-semibold">Ikon</th>
-                  <th className="p-md font-semibold">Nama Produk</th>
-                  <th className="p-md font-semibold">Kategori</th>
-                  <th className="p-md font-semibold">Harga</th>
-                  <th className="p-md font-semibold text-right">Aksi</th>
+                  <th className="p-md font-semibold w-16">Ikon</th>
+                  <th 
+                    className="p-md font-semibold cursor-pointer select-none hover:text-primary transition-colors"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center gap-xs">
+                      Nama Produk
+                      {sortField === 'name' && (
+                        <span className="material-symbols-outlined text-[16px] font-bold">
+                          {sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="p-md font-semibold cursor-pointer select-none hover:text-primary transition-colors"
+                    onClick={() => handleSort('category')}
+                  >
+                    <div className="flex items-center gap-xs">
+                      Kategori
+                      {sortField === 'category' && (
+                        <span className="material-symbols-outlined text-[16px] font-bold">
+                          {sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="p-md font-semibold cursor-pointer select-none hover:text-primary transition-colors"
+                    onClick={() => handleSort('price')}
+                  >
+                    <div className="flex items-center gap-xs">
+                      Harga
+                      {sortField === 'price' && (
+                        <span className="material-symbols-outlined text-[16px] font-bold">
+                          {sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="p-md font-semibold text-right w-24">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-variant">
@@ -161,20 +334,28 @@ export function ProductPage({
                       <p className="text-body-lg font-medium">Gagal memuat produk: {error}</p>
                     </td>
                   </tr>
-                ) : filteredList.length === 0 ? (
+                ) : processedList.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="p-xl text-center text-on-surface-variant">
                       <span className="material-symbols-outlined text-[48px] block mb-xs">inventory_2</span>
-                      Belum ada data produk.
+                      Belum ada data produk yang cocok.
                     </td>
                   </tr>
                 ) : (
-                  filteredList.map((product) => (
+                  paginatedProducts.map((product) => (
                     <tr key={product.id} className="hover:bg-surface-container-low transition-colors text-body-md text-on-surface">
                       {/* Icon */}
                       <td className="p-md">
-                        <div className="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
-                          <span className="material-symbols-outlined">{product.icon}</span>
+                        <div className="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface-variant overflow-hidden">
+                          {product.icon && (product.icon.startsWith('/') || product.icon.startsWith('http')) ? (
+                            <img
+                              src={product.icon.startsWith('/') ? `${API_BASE_URL}${product.icon}` : product.icon}
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="material-symbols-outlined">{product.icon || 'restaurant'}</span>
+                          )}
                         </div>
                       </td>
                       {/* Name */}
@@ -221,114 +402,243 @@ export function ProductPage({
             </table>
           </div>
         </div>
+
+        {/* Pagination Controls */}
+        {processedList.length > 0 && (
+          <div className="mt-md flex items-center justify-between">
+            <span className="text-body-sm text-on-surface-variant font-medium">
+              Menampilkan {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, processedList.length)} dari {processedList.length} produk
+            </span>
+            <div className="flex items-center gap-xs">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-highest transition-colors disabled:opacity-50 cursor-pointer text-on-surface-variant"
+              >
+                <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+              </button>
+              
+              {Array.from({ length: totalPages }).map((_, i) => {
+                const page = i + 1;
+                // Show current, first, last, and pages around current
+                if (
+                  page === 1 || 
+                  page === totalPages || 
+                  (page >= currentPage - 1 && page <= currentPage + 1)
+                ) {
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-body-sm font-bold transition-colors cursor-pointer ${
+                        currentPage === page 
+                          ? 'bg-primary text-on-primary' 
+                          : 'text-on-surface hover:bg-surface-container-highest'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                }
+                
+                // Show ellipsis
+                if (page === currentPage - 2 || page === currentPage + 2) {
+                  return <span key={i} className="text-on-surface-variant px-1">...</span>;
+                }
+                
+                return null;
+              })}
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-highest transition-colors disabled:opacity-50 cursor-pointer text-on-surface-variant"
+              >
+                <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Form Dialog Modal */}
-      {isModalOpen && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-md">
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/40 cursor-pointer"
-            onClick={() => setIsModalOpen(false)}
-          />
-
-          {/* Form Modal Box */}
-          <div className="bg-surface rounded-2xl w-full max-w-md border border-outline-variant shadow-2xl relative z-10 overflow-hidden">
-            <div className="p-md border-b border-outline-variant flex justify-between items-center bg-surface-container-lowest">
+      {/* Modal / Popup with Blurred Background */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-md sm:p-lg bg-black/50 backdrop-blur-md animate-fade-in">
+          <div className="bg-surface w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-full overflow-hidden animate-slide-up border border-outline-variant/30">
+            {/* Modal Header */}
+            <div className="px-lg py-md border-b border-outline-variant flex justify-between items-center bg-surface-container-lowest">
               <h3 className="text-headline-md font-semibold text-on-surface">
                 {editingProduct ? 'Edit Produk' : 'Tambah Produk Baru'}
               </h3>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="text-on-surface-variant hover:text-primary p-1 rounded-full hover:bg-surface-container-highest cursor-pointer flex items-center justify-center"
+                onClick={handleCloseModal}
+                className="p-2 text-on-surface-variant hover:text-error rounded-full hover:bg-error/10 transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-md space-y-md bg-surface">
-              {/* Product Name Input */}
-              <div className="space-y-1">
-                <label className="text-label-sm font-semibold text-on-surface-variant block">Nama Produk</label>
-                <input
-                  type="text"
-                  required
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="Contoh: Kopi Susu Aren"
-                  className="w-full px-4 py-2 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-md font-body-md text-on-surface placeholder:text-on-surface-variant"
-                />
-              </div>
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-lg bg-surface">
+              {formError && (
+                <div className="mb-lg p-4 bg-error-container text-on-error-container rounded-lg font-medium">
+                  Error: {formError}
+                </div>
+              )}
 
-              {/* Category Select */}
-              <div className="space-y-1">
-                <label className="text-label-sm font-semibold text-on-surface-variant block">Kategori</label>
-                <select
-                  value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
-                  className="w-full px-4 py-2 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-md font-body-md text-on-surface"
-                >
-                  <option value="Makanan">Makanan</option>
-                  <option value="Minuman">Minuman</option>
-                </select>
-              </div>
+              <form id="productForm" onSubmit={handleSubmit} className="space-y-xl">
+                <div className="space-y-2">
+                  <label className="text-label-lg font-semibold text-on-surface-variant block">Nama Produk</label>
+                  <input
+                    type="text"
+                    required
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    placeholder="Contoh: Kopi Susu Aren"
+                    className="w-full px-4 py-3 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-lg font-body-lg text-on-surface placeholder:text-on-surface-variant"
+                  />
+                </div>
 
-              {/* Price Input */}
-              <div className="space-y-1">
-                <label className="text-label-sm font-semibold text-on-surface-variant block">Harga (Rp)</label>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  value={formPrice}
-                  onChange={(e) => setFormPrice(e.target.value)}
-                  placeholder="Contoh: 15000"
-                  className="w-full px-4 py-2 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-md font-body-md text-on-surface placeholder:text-on-surface-variant"
-                />
-              </div>
-
-              {/* Icon Select with Symbol Preview */}
-              <div className="space-y-1">
-                <label className="text-label-sm font-semibold text-on-surface-variant block">Ikon Tampilan</label>
-                <div className="flex gap-md items-center">
-                  <div className="w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary text-[28px] border border-outline-variant">
-                    <span className="material-symbols-outlined">{formIcon}</span>
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-label-lg font-semibold text-on-surface-variant block">Kategori</label>
                   <select
-                    value={formIcon}
-                    onChange={(e) => setFormIcon(e.target.value)}
-                    className="flex-1 px-4 py-2 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-md font-body-md text-on-surface"
+                    value={formCategory}
+                    onChange={(e) => setFormCategory(e.target.value)}
+                    className="w-full px-4 py-3 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-lg font-body-lg text-on-surface"
                   >
-                    {ICON_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
+                    {categories.filter(c => c !== 'Semua').map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
                 </div>
-              </div>
 
-              {/* Form Actions */}
-              <div className="pt-sm flex gap-md border-t border-outline-variant mt-lg">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-2 rounded-lg border-2 border-primary text-primary hover:bg-surface-tint/10 bg-surface-container-lowest font-headline-md font-semibold text-lg cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2 rounded-lg bg-primary text-on-primary hover:bg-surface-tint font-headline-md font-semibold text-lg cursor-pointer"
-                >
-                  Simpan
-                </button>
-              </div>
-            </form>
+                {formVariations.length === 0 && (
+                  <div className="space-y-2">
+                    <label className="text-label-lg font-semibold text-on-surface-variant block">Harga (Rp)</label>
+                    <input
+                      type="text"
+                      required
+                      value={formatInputValue(formPrice)}
+                      onChange={(e) => handlePriceChange(e.target.value, setFormPrice)}
+                      placeholder="Contoh: 15.000"
+                      className="w-full px-4 py-3 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-lg font-body-lg text-on-surface placeholder:text-on-surface-variant"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-label-lg font-semibold text-on-surface-variant block">Variasi Produk (Opsional)</label>
+                    <button
+                      type="button"
+                      onClick={() => setFormVariations([...formVariations, { name: '', price: '' }])}
+                      className="text-primary text-label-sm font-semibold hover:bg-primary/10 px-2 py-1 rounded-md transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">add</span> Tambah
+                    </button>
+                  </div>
+                  {formVariations.length > 0 && (
+                    <div className="space-y-2">
+                      {formVariations.map((v, index) => (
+                        <div key={index} className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            required
+                            value={v.name}
+                            onChange={(e) => {
+                              const newV = [...formVariations]
+                              newV[index].name = e.target.value
+                              setFormVariations(newV)
+                            }}
+                            placeholder="Nama Variasi (misal: Large)"
+                            className="flex-1 px-3 py-2 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-md text-on-surface"
+                          />
+                          <input
+                            type="text"
+                            required
+                            value={formatInputValue(v.price)}
+                            onChange={(e) => {
+                              const numericValue = e.target.value.replace(/\D/g, '')
+                              const newV = [...formVariations]
+                              newV[index].price = numericValue
+                              setFormVariations(newV)
+                            }}
+                            placeholder="Harga Variasi"
+                            className="flex-1 px-3 py-2 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-md text-on-surface"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newV = formVariations.filter((_, i) => i !== index)
+                              setFormVariations(newV)
+                            }}
+                            className="p-2 text-error hover:bg-error/10 rounded-full transition-colors cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-label-lg font-semibold text-on-surface-variant block">Gambar Produk</label>
+                  <div className="flex gap-md items-center">
+                    <div className="w-20 h-20 rounded-xl bg-surface-container-highest flex items-center justify-center text-on-surface-variant text-[36px] border border-outline-variant shadow-sm overflow-hidden">
+                      {imagePreview ? (
+                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="material-symbols-outlined text-[36px]">image</span>
+                      )}
+                    </div>
+                    <div className="flex-1 flex flex-col gap-xs">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                        id="image-upload-input"
+                      />
+                      <label
+                        htmlFor="image-upload-input"
+                        className="px-4 py-2 border border-dashed border-outline-variant hover:border-primary rounded-lg text-center cursor-pointer transition-colors text-body-md font-medium text-on-surface-variant hover:text-primary flex items-center justify-center gap-xs"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">upload</span>
+                        {imageFile ? 'Ganti Gambar' : 'Pilih Gambar Produk'}
+                      </label>
+                      {imageFile && (
+                        <span className="text-label-sm text-primary font-medium truncate max-w-[200px]">
+                          {imageFile.name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-md border-t border-outline-variant flex justify-end gap-md bg-surface-container-lowest">
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="py-3 px-6 rounded-xl font-headline-md font-semibold text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                form="productForm"
+                disabled={isSubmitting}
+                className="py-3 px-6 rounded-xl bg-primary text-on-primary hover:bg-surface-tint font-headline-md font-semibold cursor-pointer disabled:opacity-50 transition-colors"
+              >
+                {isSubmitting ? 'Menyimpan...' : 'Simpan Produk'}
+              </button>
+            </div>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   )

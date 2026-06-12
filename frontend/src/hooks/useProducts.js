@@ -6,9 +6,7 @@ export function useProducts() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('Semua')
-
-  const categories = ['Semua', 'Makanan', 'Minuman']
+	const [selectedCategory, setSelectedCategory] = useState('Semua')
 
   const fetchProducts = useCallback(async () => {
     setLoading(true)
@@ -37,6 +35,7 @@ export function useProducts() {
         price: product.price,
         icon: product.icon,
         stock: 100, // default stock
+        variations: product.variations || [],
       })
       await fetchProducts()
     } catch (err) {
@@ -57,6 +56,7 @@ export function useProducts() {
         price: updatedProduct.price,
         icon: updatedProduct.icon,
         stock: updatedProduct.stock || 100,
+        variations: updatedProduct.variations || [],
       })
       await fetchProducts()
     } catch (err) {
@@ -98,7 +98,6 @@ export function useProducts() {
   return {
     products: filteredProducts,
     allProducts: productsList, // Raw list for management page
-    categories,
     selectedCategory,
     setSelectedCategory,
     searchQuery,

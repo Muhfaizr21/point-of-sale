@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="frontend/src/assets/Sentrakas.png" alt="Sentrakas Logo" width="200" />
+</div>
+
 # 🛒 Point of Sale (POS) System
 
 Sistem Point of Sale (Kasir) modern yang dibangun menggunakan arsitektur **Clean Code** dengan pemisahan tanggung jawab (*Separation of Concerns*) yang teratur. Terinspirasi dari pola desain arsitektur Laravel dan dikombinasikan dengan performa tangguh Golang di backend serta kedinamisan React.js di frontend.

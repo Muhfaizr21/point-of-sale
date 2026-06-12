@@ -1,6 +1,7 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
 
 export const apiClient = {
+  baseURL: API_BASE_URL,
   async request(method, endpoint, data = null) {
     const headers = {
       'Content-Type': 'application/json',
@@ -49,4 +50,31 @@ export const apiClient = {
   post: (endpoint, data) => apiClient.request('POST', endpoint, data),
   put: (endpoint, data) => apiClient.request('PUT', endpoint, data),
   delete: (endpoint) => apiClient.request('DELETE', endpoint),
+  uploadFile: async (endpoint, file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Upload failed';
+        try {
+          const errorResult = await response.json();
+          errorMessage = errorResult.message || errorMessage;
+        } catch {
+          errorMessage = `HTTP error ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`API Client Upload Error [POST ${endpoint}]:`, error);
+      throw error;
+    }
+  },
 };

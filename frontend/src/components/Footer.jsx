@@ -21,22 +21,6 @@ export function Footer() {
         </span>
         <span>•</span>
         <span className="font-data-mono text-data-mono">{formatTime(time)}</span>
-        <span>•</span>
-        <span className="font-data-mono text-data-mono">TRX-99210</span>
-      </div>
-      <div className="flex gap-md">
-        <a
-          className="text-on-surface-variant text-label-sm hover:text-primary transition-colors"
-          href="#"
-        >
-          Support
-        </a>
-        <a
-          className="text-on-surface-variant text-label-sm hover:text-primary transition-colors"
-          href="#"
-        >
-          Help Desk
-        </a>
       </div>
     </footer>
   )

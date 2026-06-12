@@ -14,6 +14,7 @@ type ProductRepository interface {
 	Update(ctx context.Context, product *models.Product) error
 	Delete(ctx context.Context, id uint) error
 	GetBySKU(ctx context.Context, sku string) (*models.Product, error)
+	UpdateCategoryName(ctx context.Context, oldName, newName string) error
 }
 
 type productRepository struct {
@@ -66,4 +67,8 @@ func (r *productRepository) GetBySKU(ctx context.Context, sku string) (*models.P
 		return nil, err
 	}
 	return &product, nil
+}
+
+func (r *productRepository) UpdateCategoryName(ctx context.Context, oldName, newName string) error {
+	return r.db.WithContext(ctx).Model(&models.Product{}).Where("category = ?", oldName).Update("category", newName).Error
 }

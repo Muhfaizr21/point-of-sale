@@ -57,12 +57,13 @@ func (s *productService) CreateProduct(ctx context.Context, req *models.CreatePr
 	}
 
 	product := &models.Product{
-		Name:     req.Name,
-		Category: req.Category,
-		Price:    req.Price,
-		Icon:     req.Icon,
-		SKU:      sku,
-		Stock:    stock,
+		Name:       req.Name,
+		Category:   req.Category,
+		Price:      req.Price,
+		Icon:       req.Icon,
+		SKU:        sku,
+		Stock:      stock,
+		Variations: req.Variations,
 	}
 
 	return s.repo.Create(ctx, product)
@@ -90,6 +91,7 @@ func (s *productService) UpdateProduct(ctx context.Context, id uint, req *models
 	product.Price = req.Price
 	product.Icon = req.Icon
 	product.Stock = req.Stock
+	product.Variations = req.Variations
 
 	err = s.repo.Update(ctx, product)
 	if err != nil {
