@@ -42,6 +42,7 @@ export function ProductPage({
 
   // Open modal for add
   const handleOpenAdd = () => {
+    alert('handleOpenAdd clicked')
     setEditingProduct(null)
     setFormName('')
     setFormCategory('Makanan')
