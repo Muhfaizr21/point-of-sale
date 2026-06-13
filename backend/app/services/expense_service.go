@@ -78,6 +78,7 @@ func (s *expenseService) Create(ctx context.Context, req *models.CreateExpenseRe
 		Amount:      req.Amount,
 		Category:    req.Category,
 		Notes:       req.Notes,
+		BranchID:    req.BranchID,
 	})
 }
 

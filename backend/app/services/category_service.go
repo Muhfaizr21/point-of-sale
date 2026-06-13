@@ -9,7 +9,7 @@ import (
 )
 
 type CategoryService interface {
-	GetAllCategories(ctx context.Context) ([]models.Category, error)
+	GetAllCategories(ctx context.Context, branchID *uint) ([]models.Category, error)
 	GetCategoryByID(ctx context.Context, id uint) (*models.Category, error)
 	CreateCategory(ctx context.Context, category *models.Category) error
 	UpdateCategory(ctx context.Context, category *models.Category) error
@@ -25,8 +25,8 @@ func NewCategoryService(repo repositories.CategoryRepository, productRepo reposi
 	return &categoryService{repo: repo, productRepo: productRepo}
 }
 
-func (s *categoryService) GetAllCategories(ctx context.Context) ([]models.Category, error) {
-	return s.repo.GetAll(ctx)
+func (s *categoryService) GetAllCategories(ctx context.Context, branchID *uint) ([]models.Category, error) {
+	return s.repo.GetAll(ctx, branchID)
 }
 
 func (s *categoryService) GetCategoryByID(ctx context.Context, id uint) (*models.Category, error) {

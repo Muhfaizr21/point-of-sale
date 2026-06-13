@@ -4,6 +4,7 @@ import "time"
 
 type Bundle struct {
 	ID        uint         `gorm:"primaryKey;autoIncrement" json:"id"`
+	BranchID  *uint        `gorm:"index" json:"branch_id,omitempty"`
 	Name      string       `gorm:"type:varchar(255);not null" json:"name"`
 	Price     int          `gorm:"type:integer;not null" json:"price"`
 	Icon      string       `gorm:"type:varchar(255)" json:"icon"`
@@ -27,11 +28,12 @@ type BundleOrderRequest struct {
 }
 
 type CreateBundleRequest struct {
-	Name   string                 `json:"name"`
-	Price  int                    `json:"price"`
-	Icon   string                 `json:"icon"`
-	Items  []CreateBundleItemReq  `json:"items"`
-	Active *bool                  `json:"active,omitempty"`
+	BranchID *uint                 `json:"branch_id,omitempty"`
+	Name     string                `json:"name"`
+	Price    int                   `json:"price"`
+	Icon     string                `json:"icon"`
+	Items    []CreateBundleItemReq `json:"items"`
+	Active   *bool                 `json:"active,omitempty"`
 }
 
 type CreateBundleItemReq struct {

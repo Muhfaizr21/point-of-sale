@@ -4,6 +4,7 @@ import "time"
 
 type Promo struct {
 	ID              uint   `gorm:"primaryKey;autoIncrement" json:"id"`
+	BranchID        *uint  `gorm:"index" json:"branch_id,omitempty"`
 	Name            string `gorm:"type:varchar(255);not null" json:"name"`
 	Type            string `gorm:"type:varchar(50);not null" json:"type"`
 	Value           int    `gorm:"type:integer;not null" json:"value"`
@@ -21,6 +22,7 @@ type Promo struct {
 }
 
 type CreatePromoRequest struct {
+	BranchID      *uint  `json:"branch_id,omitempty"`
 	Name          string `json:"name"`
 	Type          string `json:"type"`
 	Value         int    `json:"value"`

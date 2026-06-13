@@ -8,7 +8,7 @@ import (
 )
 
 type BundleRepository interface {
-	GetAll(ctx context.Context) ([]models.Bundle, error)
+	GetAll(ctx context.Context, branchID *uint) ([]models.Bundle, error)
 	GetByID(ctx context.Context, id uint) (*models.Bundle, error)
 	Create(ctx context.Context, bundle *models.Bundle) (*models.Bundle, error)
 	Update(ctx context.Context, bundle *models.Bundle) error
@@ -23,9 +23,13 @@ func NewBundleRepository(db *gorm.DB) BundleRepository {
 	return &bundleRepository{db: db}
 }
 
-func (r *bundleRepository) GetAll(ctx context.Context) ([]models.Bundle, error) {
+func (r *bundleRepository) GetAll(ctx context.Context, branchID *uint) ([]models.Bundle, error) {
 	var bundles []models.Bundle
-	err := r.db.WithContext(ctx).Preload("Items.Product").Order("id desc").Find(&bundles).Error
+	db := r.db.WithContext(ctx)
+	if branchID != nil {
+		db = db.Where("branch_id = ?", *branchID)
+	}
+	err := db.Preload("Items.Product").Order("id desc").Find(&bundles).Error
 	return bundles, err
 }
 

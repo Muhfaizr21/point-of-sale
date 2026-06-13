@@ -98,7 +98,7 @@ export function useCart() {
     setSplitPayments([])
   }
 
-  const checkout = async () => {
+  const checkout = async (branchId) => {
     if (cart.length === 0) return
     setIsCheckingOut(true)
 
@@ -114,6 +114,7 @@ export function useCart() {
     const payload = {
       customer: customerName || 'Umum',
       notes,
+      branch_id: branchId || undefined,
       payment_method: splitMode ? 'SPLIT' : paymentMethod,
       discount,
       tax_rate: taxRate,

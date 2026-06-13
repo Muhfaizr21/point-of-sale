@@ -9,7 +9,7 @@ const STATUS_COLORS = {
   'SELESAI': 'bg-primary-container text-on-primary-container',
 }
 
-export function OrderPage({ onToggleSidebar }) {
+export function OrderPage({ onToggleSidebar, activeBranch = null }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -35,7 +35,8 @@ export function OrderPage({ onToggleSidebar }) {
         search: searchQuery,
         status: statusFilter,
         dateFrom,
-        dateTo
+        dateTo,
+        branchId: activeBranch,
       })
       if (response && response.data) {
         setOrders(response.data)
@@ -49,7 +50,7 @@ export function OrderPage({ onToggleSidebar }) {
     } finally {
       setLoading(false)
     }
-  }, [page, limit, searchQuery, statusFilter, dateFrom, dateTo])
+  }, [page, limit, searchQuery, statusFilter, dateFrom, dateTo, activeBranch])
 
   useEffect(() => { fetchData() }, [fetchData])
   

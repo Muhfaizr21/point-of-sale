@@ -215,7 +215,7 @@ func (s *orderService) Checkout(ctx context.Context, req *models.CreateOrderRequ
 		}
 
 		// Evaluate promos
-		_, promoDiscount, err := s.promoSvc.EvaluatePromos(ctx, orderItems, subtotal)
+		_, promoDiscount, err := s.promoSvc.EvaluatePromos(ctx, orderItems, subtotal, req.BranchID)
 		if err != nil {
 			return err
 		}
@@ -293,6 +293,7 @@ func (s *orderService) Checkout(ctx context.Context, req *models.CreateOrderRequ
 
 		order := &models.Order{
 			InvoiceNumber:  invoiceNumber,
+			BranchID:       req.BranchID,
 			Customer:       customer,
 			Cashier:        cashierName,
 			Subtotal:       subtotal,

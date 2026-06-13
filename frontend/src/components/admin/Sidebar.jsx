@@ -1,13 +1,22 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { apiClient } from '../../services/apiClient'
 import defaultLogo from '../../assets/pekalipan-logo.jpg'
 
 
-export function Sidebar({ isOpen, onClose, currentTab, onTabSelect, storeName, storeLogo, storeAddress }) {
+export function Sidebar({ isOpen, onClose, currentTab, onTabSelect, storeName, storeLogo, storeAddress, activeBranch, onBranchChange, branchRefreshKey }) {
   const { user, hardLogout } = useAuth()
   const navigate = useNavigate()
   const isOwner = user?.role === 'owner'
+  const [branches, setBranches] = useState([])
+  const [branchOpen, setBranchOpen] = useState(false)
+
+  useEffect(() => {
+    if (isOwner) {
+      apiClient.get('/api/branches').then(d => setBranches(d || [])).catch(() => {})
+    }
+  }, [isOwner, branchRefreshKey])
 
   const city = React.useMemo(() => {
     if (!storeAddress) return 'Cirebon'
@@ -23,6 +32,12 @@ export function Sidebar({ isOpen, onClose, currentTab, onTabSelect, storeName, s
         { id: 'kasir', label: 'Kasir', icon: 'point_of_sale' },
       ]
     },
+    ...(isOwner ? [{
+      title: 'Cabang',
+      items: [
+        { id: 'cabang', label: 'Kelola Cabang', icon: 'store' },
+      ]
+    }] : []),
     {
       title: 'Manajemen',
       items: [
@@ -120,7 +135,32 @@ export function Sidebar({ isOpen, onClose, currentTab, onTabSelect, storeName, s
           </button>
         </div>
 
-        <nav className="flex-1 flex flex-col pt-6 gap-6 overflow-y-auto hide-scrollbar relative z-0 pb-6">
+        {isOwner && branches.length > 0 && (
+          <div className="px-4 pt-3 pb-1 relative">
+            <button onClick={() => setBranchOpen(!branchOpen)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-high text-on-surface text-label-sm font-medium hover:bg-surface-container-higher transition-colors cursor-pointer">
+              <span className="material-symbols-outlined text-[18px] text-primary">store</span>
+              <span className="flex-1 text-left truncate">{activeBranch ? branches.find(b => b.id === activeBranch)?.name || 'Semua Cabang' : 'Semua Cabang'}</span>
+              <span className="material-symbols-outlined text-[16px] text-on-surface-variant">{branchOpen ? 'expand_less' : 'expand_more'}</span>
+            </button>
+            {branchOpen && (
+              <div className="absolute left-4 right-4 top-full mt-1 z-50 bg-surface border border-outline-variant rounded-xl shadow-lg overflow-hidden">
+                <button onClick={() => { onBranchChange(null); setBranchOpen(false) }}
+                  className={`w-full text-left px-4 py-2.5 text-label-sm hover:bg-surface-container-high transition-colors cursor-pointer ${!activeBranch ? 'bg-primary/10 text-primary font-semibold' : 'text-on-surface'}`}>
+                  Semua Cabang
+                </button>
+                {branches.filter(b => b.active).map(b => (
+                  <button key={b.id} onClick={() => { onBranchChange(b.id); setBranchOpen(false) }}
+                    className={`w-full text-left px-4 py-2.5 text-label-sm hover:bg-surface-container-high transition-colors cursor-pointer ${activeBranch === b.id ? 'bg-primary/10 text-primary font-semibold' : 'text-on-surface'}`}>
+                    {b.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <nav className="flex-1 flex flex-col pt-3 gap-6 overflow-y-auto hide-scrollbar relative z-0 pb-6">
           {allowedGroups.map((group, groupIdx) => (
             <div key={groupIdx} className="flex flex-col gap-1">
               <h3 className="px-8 text-[11px] font-bold tracking-wider text-on-surface-variant uppercase mb-1">

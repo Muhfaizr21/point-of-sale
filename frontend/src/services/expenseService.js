@@ -11,18 +11,13 @@ const buildQueryString = (params) => {
 
 export const expenseService = {
   getAll: async ({
-    page = 1,
-    limit = 20,
-    dateFrom = '',
-    dateTo = '',
-    category = '',
-    search = '',
-    sortBy = 'date',
-    sortOrder = 'desc',
+    page = 1, limit = 20, dateFrom = '', dateTo = '',
+    category = '', search = '', sortBy = 'date', sortOrder = 'desc', branchId,
   } = {}) => {
     const qs = buildQueryString({
       page, limit, date_from: dateFrom, date_to: dateTo,
       category, search, sort_by: sortBy, sort_order: sortOrder,
+      branch_id: branchId,
     })
     return apiClient.get(`/api/expenses${qs}`)
   },
@@ -43,3 +38,5 @@ export const expenseService = {
     return apiClient.delete(`/api/expenses/${id}`)
   },
 }
+
+export default expenseService

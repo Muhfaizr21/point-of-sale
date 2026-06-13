@@ -18,8 +18,8 @@ type AuthService interface {
 	Me(ctx context.Context, token string) (*models.User, error)
 	Logout(ctx context.Context, token string) error
 	GetAllUsers(ctx context.Context) ([]models.User, error)
-	CreateUser(ctx context.Context, username, password, name, role string) (*models.User, error)
-	UpdateUser(ctx context.Context, id uint, username, password, name, role string) (*models.User, error)
+	CreateUser(ctx context.Context, username, password, name, role string, branchID *uint) (*models.User, error)
+	UpdateUser(ctx context.Context, id uint, username, password, name, role string, branchID *uint) (*models.User, error)
 	DeleteUser(ctx context.Context, id uint) error
 }
 
@@ -107,7 +107,7 @@ func (s *authService) GetAllUsers(ctx context.Context) ([]models.User, error) {
 	return users, nil
 }
 
-func (s *authService) CreateUser(ctx context.Context, username, password, name, role string) (*models.User, error) {
+func (s *authService) CreateUser(ctx context.Context, username, password, name, role string, branchID *uint) (*models.User, error) {
 	if username == "" || password == "" || name == "" {
 		return nil, models.NewAPIError(models.ErrInvalidInput, "Username, password, dan nama wajib diisi", 400)
 	}
@@ -134,6 +134,7 @@ func (s *authService) CreateUser(ctx context.Context, username, password, name, 
 		Password: string(hashed),
 		Name:     name,
 		Role:     role,
+		BranchID: branchID,
 	}
 	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, models.NewAPIError(models.ErrInternalError, "Gagal membuat user", 500)
@@ -144,7 +145,7 @@ func (s *authService) CreateUser(ctx context.Context, username, password, name, 
 	return user, nil
 }
 
-func (s *authService) UpdateUser(ctx context.Context, id uint, username, password, name, role string) (*models.User, error) {
+func (s *authService) UpdateUser(ctx context.Context, id uint, username, password, name, role string, branchID *uint) (*models.User, error) {
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -176,6 +177,9 @@ func (s *authService) UpdateUser(ctx context.Context, id uint, username, passwor
 	}
 	if role == "owner" || role == "cashier" {
 		user.Role = role
+	}
+	if branchID != nil {
+		user.BranchID = branchID
 	}
 
 	// #10: Invalidate token on password change

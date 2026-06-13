@@ -82,13 +82,15 @@ const tabs = [
   { id: 'labarugi', label: 'Laba-Rugi', icon: 'account_balance' },
 ]
 
-export function LaporanPage({ onToggleSidebar }) {
+export function LaporanPage({ onToggleSidebar, activeBranch = null }) {
   const [activeTab, setActiveTab] = useState('penjualan')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [dateRange, setDateRange] = useState('month')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
+  const [appliedCustomFrom, setAppliedCustomFrom] = useState('')
+  const [appliedCustomTo, setAppliedCustomTo] = useState('')
   const [analytics, setAnalytics] = useState(null)
   const [stockReport, setStockReport] = useState(null)
   const [customerReport, setCustomerReport] = useState(null)
@@ -97,26 +99,30 @@ export function LaporanPage({ onToggleSidebar }) {
   const [stockFilter, setStockFilter] = useState('all')
   const [stockPage, setStockPage] = useState(1)
   const [stockSearch, setStockSearch] = useState('')
+  const [salesPage, setSalesPage] = useState(1)
   const ITEMS_PER_PAGE = 5
 
   useEffect(() => {
     setStockPage(1)
   }, [stockFilter, stockSearch])
 
-  const useCustomRange = activeTab !== 'penjualan'
+  const useCustomRange = dateRange === 'custom'
 
-  const dateFrom = useCustomRange ? customFrom : getDateRange(dateRange).dateFrom
-  const dateTo = useCustomRange ? customTo : getDateRange(dateRange).dateTo
+  const dateFrom = useCustomRange ? appliedCustomFrom : getDateRange(dateRange).dateFrom
+  const dateTo = useCustomRange ? appliedCustomTo : getDateRange(dateRange).dateTo
 
   const fetchAll = useCallback(async () => {
+    if (dateRange === 'custom' && (!appliedCustomFrom || !appliedCustomTo)) return;
     setLoading(true); setError(null)
     try {
-      const { dateFrom: df, dateTo: dt } = getDateRange(dateRange)
+      const df = dateRange === 'custom' ? appliedCustomFrom : getDateRange(dateRange).dateFrom
+      const dt = dateRange === 'custom' ? appliedCustomTo : getDateRange(dateRange).dateTo
+      
       const [analyticsData, stockData, customerData, plData] = await Promise.all([
-        orderService.getAnalytics({ dateFrom: df, dateTo: dt }),
-        reportService.getStockReport(),
-        reportService.getCustomerReport({ dateFrom: df, dateTo: dt }),
-        reportService.getProfitLoss({ dateFrom: df, dateTo: dt }),
+        orderService.getAnalytics({ dateFrom: df, dateTo: dt, branchId: activeBranch }),
+        reportService.getStockReport({ branchId: activeBranch }),
+        reportService.getCustomerReport({ dateFrom: df, dateTo: dt, branchId: activeBranch }),
+        reportService.getProfitLoss({ dateFrom: df, dateTo: dt, branchId: activeBranch }),
       ])
       setAnalytics(analyticsData)
       setStockReport(stockData)
@@ -128,29 +134,11 @@ export function LaporanPage({ onToggleSidebar }) {
     } finally {
       setLoading(false)
     }
-  }, [dateRange])
+  }, [dateRange, appliedCustomFrom, appliedCustomTo, activeBranch])
 
   const fetchCustom = useCallback(async () => {
-    if (!customFrom || !customTo) return
-    setLoading(true); setError(null)
-    try {
-      if (activeTab === 'penjualan' || activeTab === 'kasir' || activeTab === 'pembayaran') {
-        const data = await orderService.getAnalytics({ dateFrom: customFrom, dateTo: customTo })
-        setAnalytics(data)
-      } else if (activeTab === 'stok') {
-        const data = await reportService.getStockReport()
-        setStockReport(data)
-      } else if (activeTab === 'labarugi') {
-        const data = await reportService.getProfitLoss({ dateFrom: customFrom, dateTo: customTo })
-        setProfitLoss(data)
-      }
-    } catch (err) {
-      console.error('Error fetching report:', err)
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [customFrom, customTo, activeTab])
+    fetchAll()
+  }, [fetchAll])
 
   useEffect(() => {
     fetchAll()
@@ -167,11 +155,7 @@ export function LaporanPage({ onToggleSidebar }) {
     }
   }, [fetchAll])
 
-  useEffect(() => {
-    if (activeTab !== 'penjualan' && customFrom && customTo) {
-      fetchCustom()
-    }
-  }, [fetchCustom, activeTab])
+  // Remove old custom fetch hook as it's merged into fetchAll
 
   const emptyAnalytics = useMemo(() => ({
     summary: { total_revenue: 0, total_transactions: 0, avg_order_value: 0, revenue_growth: 0, best_day: {} },
@@ -227,7 +211,11 @@ export function LaporanPage({ onToggleSidebar }) {
   }, [displayAnalytics])
 
   const handleCustomDate = () => {
-    if (customFrom && customTo) fetchCustom()
+    setSalesPage(1)
+    if (customFrom && customTo) {
+      setAppliedCustomFrom(customFrom)
+      setAppliedCustomTo(customTo)
+    }
   }
 
   // --- PDF Export (Penjualan) ---
@@ -329,27 +317,28 @@ export function LaporanPage({ onToggleSidebar }) {
   }
 
   const renderDateFilter = () => {
-    if (activeTab === 'penjualan') {
-      return (
-        <select value={dateRange} onChange={(e) => setDateRange(e.target.value)}
-          className="px-md py-sm border border-outline-variant bg-surface-container-high rounded-lg text-body-md font-medium text-on-surface cursor-pointer">
+    return (
+      <div className="flex items-center gap-sm flex-wrap w-full md:w-auto">
+        <select value={dateRange} onChange={(e) => { setDateRange(e.target.value); setSalesPage(1); }}
+          className="px-md py-sm border border-outline-variant bg-surface-container-high rounded-lg text-body-md font-medium text-on-surface cursor-pointer w-full md:w-auto">
           <option value="today">Hari Ini</option>
           <option value="week">7 Hari</option>
           <option value="month">30 Hari</option>
           <option value="quarter">3 Bulan</option>
           <option value="year">Tahun Ini</option>
+          <option value="custom">-- Pilih Rentang Kustom --</option>
         </select>
-      )
-    }
-    return (
-      <div className="flex items-center gap-sm flex-wrap">
-        <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)}
-          className="px-sm py-xs border border-outline-variant rounded-md text-body-sm text-on-surface bg-surface" />
-        <span className="text-on-surface-variant">s.d.</span>
-        <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)}
-          className="px-sm py-xs border border-outline-variant rounded-md text-body-sm text-on-surface bg-surface" />
-        <Button variant="primary" onClick={handleCustomDate} disabled={!customFrom || !customTo}
-          className="py-1 px-3 text-sm">Terapkan</Button>
+        {dateRange === 'custom' && (
+          <div className="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0 bg-surface-container-low p-1 rounded-lg border border-outline-variant">
+            <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)}
+              className="px-sm py-xs border border-outline-variant rounded-md text-body-sm text-on-surface bg-surface w-full md:w-auto flex-1" />
+            <span className="text-on-surface-variant font-medium">s.d.</span>
+            <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)}
+              className="px-sm py-xs border border-outline-variant rounded-md text-body-sm text-on-surface bg-surface w-full md:w-auto flex-1" />
+            <Button variant="primary" onClick={handleCustomDate} disabled={!customFrom || !customTo}
+              className="py-2 px-4 text-sm font-semibold whitespace-nowrap">Terapkan</Button>
+          </div>
+        )}
       </div>
     )
   }
@@ -357,6 +346,16 @@ export function LaporanPage({ onToggleSidebar }) {
   // --- Tab: Penjualan ---
   const renderPenjualan = () => {
     const s = chartData.summary
+    
+    // Pagination calculation for daily sales
+    const dailyWithTrends = (chartData.daily || []).map((day, idx, arr) => {
+      const prev = idx > 0 ? arr[idx - 1] : null;
+      const trend = prev && prev.revenue > 0 ? ((day.revenue - prev.revenue) / prev.revenue * 100).toFixed(1) : 0;
+      return { ...day, trend, originalIdx: idx };
+    });
+    const totalSalesPages = Math.ceil(dailyWithTrends.length / ITEMS_PER_PAGE);
+    const paginatedDaily = dailyWithTrends.slice((salesPage - 1) * ITEMS_PER_PAGE, salesPage * ITEMS_PER_PAGE);
+
     return (
       <div className="space-y-md">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-md">
@@ -484,11 +483,10 @@ export function LaporanPage({ onToggleSidebar }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-variant">
-                {chartData.daily?.length === 0 ? (
+                {paginatedDaily.length === 0 ? (
                   <tr><td colSpan={5} className="p-md text-center text-on-surface-variant">Tidak ada data</td></tr>
-                ) : (chartData.daily?.map((day, idx, arr) => {
-                  const prev = idx > 0 ? arr[idx - 1] : null
-                  const trend = prev && prev.revenue > 0 ? ((day.revenue - prev.revenue) / prev.revenue * 100).toFixed(1) : 0
+                ) : (paginatedDaily.map((day, idx) => {
+                  const trend = day.trend;
                   const pos = parseFloat(trend) >= 0
                   return (
                     <tr key={day.date || idx} className="hover:bg-surface-container-low transition-colors text-body-md text-on-surface">
@@ -522,6 +520,55 @@ export function LaporanPage({ onToggleSidebar }) {
             </table>
           </div>
         </div>
+
+        {dailyWithTrends.length > 0 && (
+          <div className="mt-md flex items-center justify-between">
+            <span className="text-body-sm text-on-surface-variant font-medium">
+              Menampilkan {((salesPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(salesPage * ITEMS_PER_PAGE, dailyWithTrends.length)} dari {dailyWithTrends.length} hari
+            </span>
+            <div className="flex items-center gap-xs">
+              <button
+                type="button"
+                onClick={() => setSalesPage(prev => Math.max(prev - 1, 1))}
+                disabled={salesPage === 1}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant bg-surface hover:bg-surface-container-low disabled:opacity-50 transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+              </button>
+              {Array.from({ length: totalSalesPages }).map((_, i) => {
+                // simple pagination display logic
+                if (
+                  i === 0 || 
+                  i === totalSalesPages - 1 || 
+                  (i >= salesPage - 2 && i <= salesPage)
+                ) {
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setSalesPage(i + 1)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-label-sm font-semibold transition-colors cursor-pointer
+                        ${salesPage === i + 1 ? 'bg-primary text-on-primary' : 'border border-outline-variant bg-surface hover:bg-surface-container-low text-on-surface-variant'}`}
+                    >
+                      {i + 1}
+                    </button>
+                  )
+                } else if (i === 1 || i === totalSalesPages - 2) {
+                  return <span key={`ellipsis-${i}`} className="px-1 text-on-surface-variant">...</span>
+                }
+                return null;
+              })}
+              <button
+                type="button"
+                onClick={() => setSalesPage(prev => Math.min(prev + 1, totalSalesPages))}
+                disabled={salesPage === totalSalesPages}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant bg-surface hover:bg-surface-container-low disabled:opacity-50 transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

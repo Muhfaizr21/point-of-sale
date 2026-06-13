@@ -4,6 +4,7 @@ import "time"
 
 type Supplier struct {
 	ID            uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	BranchID      *uint     `gorm:"index" json:"branch_id,omitempty"`
 	Name          string    `gorm:"type:varchar(255);not null" json:"name"`
 	ContactPerson string    `gorm:"type:varchar(255)" json:"contact_person"`
 	Phone         string    `gorm:"type:varchar(50)" json:"phone"`
@@ -15,6 +16,7 @@ type Supplier struct {
 }
 
 type CreateSupplierRequest struct {
+	BranchID      *uint  `json:"branch_id,omitempty"`
 	Name          string `json:"name"`
 	ContactPerson string `json:"contact_person"`
 	Phone         string `json:"phone"`

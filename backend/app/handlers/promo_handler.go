@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"point-of-sale/backend/app/middleware"
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/services"
 	"strconv"
@@ -20,8 +21,12 @@ func NewPromoHandler(service services.PromoService) *PromoHandler {
 }
 
 func (h *PromoHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	h.service.DeactivateExpiredPromos(r.Context())
-	promos, err := h.service.GetAllPromos(r.Context())
+	var branchID *uint
+	if user := middleware.GetUser(r); user != nil {
+		branchID = user.BranchID
+	}
+	h.service.DeactivateExpiredPromos(r.Context(), branchID)
+	promos, err := h.service.GetAllPromos(r.Context(), branchID)
 	if err != nil {
 		models.WriteError(w, err)
 		return
@@ -31,8 +36,12 @@ func (h *PromoHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PromoHandler) GetActive(w http.ResponseWriter, r *http.Request) {
-	h.service.DeactivateExpiredPromos(r.Context())
-	promos, err := h.service.GetAllPromos(r.Context())
+	var branchID *uint
+	if user := middleware.GetUser(r); user != nil {
+		branchID = user.BranchID
+	}
+	h.service.DeactivateExpiredPromos(r.Context(), branchID)
+	promos, err := h.service.GetAllPromos(r.Context(), branchID)
 	if err != nil {
 		models.WriteError(w, err)
 		return
@@ -121,6 +130,11 @@ func (h *PromoHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format input tidak valid", 400))
 		return
+	}
+	if req.BranchID == nil {
+		if user := middleware.GetUser(r); user != nil {
+			req.BranchID = user.BranchID
+		}
 	}
 	promo, err := h.service.CreatePromo(r.Context(), &req)
 	if err != nil {

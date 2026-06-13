@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"point-of-sale/backend/app/middleware"
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/services"
 	"strconv"
@@ -18,12 +19,16 @@ func NewSupplierHandler(svc services.SupplierService) *SupplierHandler {
 }
 
 func (h *SupplierHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	var branchID *uint
+	if user := middleware.GetUser(r); user != nil {
+		branchID = user.BranchID
+	}
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
 
 	if page > 0 && limit > 0 {
-		list, total, err := h.svc.GetAllPaginated(r.Context(), page, limit, search)
+		list, total, err := h.svc.GetAllPaginated(r.Context(), page, limit, search, branchID)
 		if err != nil { models.WriteError(w, err); return }
 		totalPages := int(total) / limit
 		if int(total)%limit > 0 { totalPages++ }
@@ -37,7 +42,7 @@ func (h *SupplierHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := h.svc.GetAll(r.Context())
+	list, err := h.svc.GetAll(r.Context(), branchID)
 	if err != nil { models.WriteError(w, err); return }
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(list)
@@ -56,6 +61,11 @@ func (h *SupplierHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format tidak valid", 400))
 		return
+	}
+	if req.BranchID == nil {
+		if user := middleware.GetUser(r); user != nil {
+			req.BranchID = user.BranchID
+		}
 	}
 	s, err := h.svc.Create(r.Context(), &req)
 	if err != nil { models.WriteError(w, err); return }

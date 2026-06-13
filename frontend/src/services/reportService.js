@@ -12,17 +12,18 @@ const buildQueryString = (params) => {
 }
 
 export const reportService = {
-  getStockReport: async () => {
-    return apiClient.get('/api/reports/stock')
+  getStockReport: async ({ branchId } = {}) => {
+    const qs = buildQueryString({ branch_id: branchId })
+    return apiClient.get(`/api/reports/stock${qs}`)
   },
 
-  getCustomerReport: async ({ dateFrom = '', dateTo = '' } = {}) => {
-    const qs = buildQueryString({ date_from: dateFrom, date_to: dateTo })
+  getCustomerReport: async ({ dateFrom = '', dateTo = '', branchId } = {}) => {
+    const qs = buildQueryString({ date_from: dateFrom, date_to: dateTo, branch_id: branchId })
     return apiClient.get(`/api/reports/customers${qs}`)
   },
 
-  getProfitLoss: async ({ dateFrom = '', dateTo = '' } = {}) => {
-    const qs = buildQueryString({ date_from: dateFrom, date_to: dateTo })
+  getProfitLoss: async ({ dateFrom = '', dateTo = '', branchId } = {}) => {
+    const qs = buildQueryString({ date_from: dateFrom, date_to: dateTo, branch_id: branchId })
     return apiClient.get(`/api/reports/profit-loss${qs}`)
   },
 }

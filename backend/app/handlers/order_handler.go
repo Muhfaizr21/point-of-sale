@@ -25,10 +25,14 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// #3: Get cashier name from authenticated user
+	// #3: Get cashier name + branch_id from authenticated user
 	cashierName := "Admin"
 	if user := middleware.GetUser(r); user != nil {
 		cashierName = user.Name
+		// User branch_id takes precedence; fallback to request payload (admin scoped)
+		if user.BranchID != nil {
+			req.BranchID = user.BranchID
+		}
 	}
 
 	order, err := h.service.Checkout(r.Context(), &req, cashierName)
@@ -98,6 +102,16 @@ func (h *OrderHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	// Parse sort_order
 	if so := r.URL.Query().Get("sort_order"); so != "" {
 		query.SortOrder = strings.ToLower(so)
+	}
+
+	// Parse branch_id — auto-scope from user context or explicit param
+	if bid := r.URL.Query().Get("branch_id"); bid != "" {
+		if id, err := strconv.ParseUint(bid, 10, 32); err == nil {
+			uid := uint(id)
+			query.BranchID = &uid
+		}
+	} else if user := middleware.GetUser(r); user != nil && user.BranchID != nil {
+		query.BranchID = user.BranchID
 	}
 
 	result, err := h.service.GetFilteredOrders(r.Context(), query)

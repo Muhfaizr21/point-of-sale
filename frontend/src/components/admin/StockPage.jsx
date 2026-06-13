@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { apiClient } from '../../services/apiClient'
 import { TopBar } from '../common/TopBar'
 
-export function StockPage({ products: initialProducts = [], onToggleSidebar, onRefreshProducts }) {
+export function StockPage({ products: initialProducts = [], onToggleSidebar, onRefreshProducts, activeBranch = null }) {
   const [products, setProducts] = useState(initialProducts)
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -24,14 +24,14 @@ export function StockPage({ products: initialProducts = [], onToggleSidebar, onR
   const fetchAll = useCallback(async () => {
     try {
       const [prodData, logData] = await Promise.all([
-        apiClient.get('/api/products'),
-        apiClient.get('/api/stock/logs/all'),
+        apiClient.get(activeBranch ? `/api/products?branch_id=${activeBranch}` : '/api/products'),
+        apiClient.get(activeBranch ? `/api/stock/logs/all?branch_id=${activeBranch}` : '/api/stock/logs/all'),
       ])
       setProducts(prodData || [])
       setLogs(logData || [])
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
-  }, [])
+  }, [activeBranch])
 
   useEffect(() => { fetchAll() }, [fetchAll])
 

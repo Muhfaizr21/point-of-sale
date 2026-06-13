@@ -8,10 +8,12 @@ type User struct {
 	Password       string     `gorm:"type:varchar(255);not null" json:"-"`
 	Role           string     `gorm:"type:varchar(20);default:'cashier'" json:"role"`
 	Name           string     `gorm:"type:varchar(100)" json:"name"`
+	BranchID       *uint      `json:"branch_id,omitempty"`
 	Token          string     `gorm:"type:varchar(255)" json:"-"`
 	TokenExpiresAt *time.Time `gorm:"type:timestamp" json:"-"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
+	Branch         *Branch    `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
 }
 
 type LoginRequest struct {

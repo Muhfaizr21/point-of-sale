@@ -28,7 +28,7 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 
 func (r *userRepository) GetByUsername(ctx context.Context, username string) (*models.User, error) {
 	var user models.User
-	err := r.db.WithContext(ctx).Where("username = ?", username).First(&user).Error
+	err := r.db.WithContext(ctx).Preload("Branch").Where("username = ?", username).First(&user).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
@@ -37,7 +37,7 @@ func (r *userRepository) GetByUsername(ctx context.Context, username string) (*m
 
 func (r *userRepository) GetByToken(ctx context.Context, token string) (*models.User, error) {
 	var user models.User
-	err := r.db.WithContext(ctx).Where("token = ?", token).First(&user).Error
+	err := r.db.WithContext(ctx).Preload("Branch").Where("token = ?", token).First(&user).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
@@ -46,13 +46,13 @@ func (r *userRepository) GetByToken(ctx context.Context, token string) (*models.
 
 func (r *userRepository) GetAll(ctx context.Context) ([]models.User, error) {
 	var users []models.User
-	err := r.db.WithContext(ctx).Order("id asc").Find(&users).Error
+	err := r.db.WithContext(ctx).Preload("Branch").Order("id asc").Find(&users).Error
 	return users, err
 }
 
 func (r *userRepository) GetByID(ctx context.Context, id uint) (*models.User, error) {
 	var user models.User
-	err := r.db.WithContext(ctx).First(&user, id).Error
+	err := r.db.WithContext(ctx).Preload("Branch").First(&user, id).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"point-of-sale/backend/app/middleware"
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/services"
 	"strconv"
@@ -17,7 +18,11 @@ func NewCategoryHandler(service services.CategoryService) *CategoryHandler {
 }
 
 func (h *CategoryHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	categories, err := h.service.GetAllCategories(r.Context())
+	var branchID *uint
+	if user := middleware.GetUser(r); user != nil {
+		branchID = user.BranchID
+	}
+	categories, err := h.service.GetAllCategories(r.Context(), branchID)
 	if err != nil {
 		models.WriteError(w, err)
 		return
@@ -33,6 +38,12 @@ func (h *CategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&category); err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Invalid request payload", 400))
 		return
+	}
+
+	if category.BranchID == nil {
+		if user := middleware.GetUser(r); user != nil {
+			category.BranchID = user.BranchID
+		}
 	}
 
 	if err := h.service.CreateCategory(r.Context(), &category); err != nil {

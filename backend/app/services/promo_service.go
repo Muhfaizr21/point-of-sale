@@ -10,13 +10,13 @@ import (
 )
 
 type PromoService interface {
-	GetAllPromos(ctx context.Context) ([]models.Promo, error)
+	GetAllPromos(ctx context.Context, branchID *uint) ([]models.Promo, error)
 	GetPromoByID(ctx context.Context, id uint) (*models.Promo, error)
 	CreatePromo(ctx context.Context, req *models.CreatePromoRequest) (*models.Promo, error)
 	UpdatePromo(ctx context.Context, id uint, req *models.UpdatePromoRequest) (*models.Promo, error)
 	DeletePromo(ctx context.Context, id uint) error
-	EvaluatePromos(ctx context.Context, items []models.OrderItem, subtotal int) ([]models.AppliedPromo, int, error)
-	DeactivateExpiredPromos(ctx context.Context) error
+	EvaluatePromos(ctx context.Context, items []models.OrderItem, subtotal int, branchID *uint) ([]models.AppliedPromo, int, error)
+	DeactivateExpiredPromos(ctx context.Context, branchID *uint) error
 }
 
 type promoService struct {
@@ -27,8 +27,8 @@ func NewPromoService(promoRepo repositories.PromoRepository) PromoService {
 	return &promoService{promoRepo: promoRepo}
 }
 
-func (s *promoService) GetAllPromos(ctx context.Context) ([]models.Promo, error) {
-	return s.promoRepo.GetAll(ctx)
+func (s *promoService) GetAllPromos(ctx context.Context, branchID *uint) ([]models.Promo, error) {
+	return s.promoRepo.GetAll(ctx, branchID)
 }
 
 func (s *promoService) GetPromoByID(ctx context.Context, id uint) (*models.Promo, error) {
@@ -44,6 +44,7 @@ func (s *promoService) CreatePromo(ctx context.Context, req *models.CreatePromoR
 	}
 
 	promo := &models.Promo{
+		BranchID:      req.BranchID,
 		Name:          req.Name,
 		Type:          req.Type,
 		Value:         req.Value,
@@ -102,11 +103,11 @@ func (s *promoService) DeletePromo(ctx context.Context, id uint) error {
 	return s.promoRepo.Delete(ctx, id)
 }
 
-func (s *promoService) EvaluatePromos(ctx context.Context, items []models.OrderItem, subtotal int) ([]models.AppliedPromo, int, error) {
+func (s *promoService) EvaluatePromos(ctx context.Context, items []models.OrderItem, subtotal int, branchID *uint) ([]models.AppliedPromo, int, error) {
 	// Auto-deactivate expired promos before evaluating
-	s.DeactivateExpiredPromos(ctx)
+	s.DeactivateExpiredPromos(ctx, branchID)
 
-	activePromos, err := s.promoRepo.GetActivePromos(ctx)
+	activePromos, err := s.promoRepo.GetActivePromos(ctx, branchID)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -137,8 +138,8 @@ func (s *promoService) EvaluatePromos(ctx context.Context, items []models.OrderI
 	return applied, totalDiscount, nil
 }
 
-func (s *promoService) DeactivateExpiredPromos(ctx context.Context) error {
-	activePromos, err := s.promoRepo.GetActivePromos(ctx)
+func (s *promoService) DeactivateExpiredPromos(ctx context.Context, branchID *uint) error {
+	activePromos, err := s.promoRepo.GetActivePromos(ctx, branchID)
 	if err != nil {
 		return err
 	}

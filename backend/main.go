@@ -53,11 +53,13 @@ func main() {
 	customerRepo := repositories.NewCustomerRepository(DB)
 	stockLogRepo := repositories.NewStockLogRepository(DB)
 	expenseRepo := repositories.NewExpenseRepository(DB)
+	branchRepo := repositories.NewBranchRepository(DB)
+	productBranchRepo := repositories.NewProductBranchRepository(DB)
 
 	// Services
 	authService := services.NewAuthService(userRepo)
 	promoSvc := services.NewPromoService(promoRepo)
-	productService := services.NewProductService(productRepo)
+	productService := services.NewProductService(productRepo, productBranchRepo)
 	orderService := services.NewOrderService(DB, orderRepo, productRepo, bundleRepo, promoSvc, targetRepo)
 	analyticsService := services.NewAnalyticsService(DB, orderRepo)
 	categoryService := services.NewCategoryService(categoryRepo, productRepo)
@@ -67,6 +69,7 @@ func main() {
 	customerSvc := services.NewCustomerService(customerRepo, orderRepo)
 	reportService := services.NewReportService(DB)
 	expenseService := services.NewExpenseService(expenseRepo)
+	branchService := services.NewBranchService(branchRepo, productBranchRepo)
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -80,10 +83,11 @@ func main() {
 	promoHandler := handlers.NewPromoHandler(promoSvc)
 	supplierHandler := handlers.NewSupplierHandler(supplierSvc)
 	customerHandler := handlers.NewCustomerHandler(customerSvc)
-	stockHandler := handlers.NewStockHandler(DB, productRepo, stockLogRepo)
+	stockHandler := handlers.NewStockHandler(DB, productRepo, productBranchRepo, stockLogRepo)
 	reportHandler := handlers.NewReportHandler(reportService)
 	expenseHandler := handlers.NewExpenseHandler(expenseService)
 	settingHandler := handlers.NewSettingHandler(DB)
+	branchHandler := handlers.NewBranchHandler(branchService, productBranchRepo)
 
 	// #17: Rate limiter (60 req/min for login, 300 req/min for others)
 	loginLimiter := middleware.NewRateLimiter(10, 1*time.Minute) // 10 login attempts/min
@@ -183,7 +187,17 @@ func main() {
 	mux.HandleFunc("PUT /api/expenses/{id}", expenseHandler.Update)
 	mux.Handle("DELETE /api/expenses/{id}", middleware.RequireOwner(http.HandlerFunc(expenseHandler.Delete)))
 
-	promoSvc.DeactivateExpiredPromos(context.Background())
+	// Branch routes
+	mux.HandleFunc("GET /api/branches", branchHandler.GetAll)
+	mux.HandleFunc("GET /api/branches/{id}", branchHandler.GetByID)
+	mux.Handle("POST /api/branches", middleware.RequireOwner(http.HandlerFunc(branchHandler.Create)))
+	mux.Handle("PUT /api/branches/{id}", middleware.RequireOwner(http.HandlerFunc(branchHandler.Update)))
+	mux.Handle("DELETE /api/branches/{id}", middleware.RequireOwner(http.HandlerFunc(branchHandler.Delete)))
+	mux.Handle("POST /api/branches/{id}/products", middleware.RequireOwner(http.HandlerFunc(branchHandler.SetProductPrice)))
+	mux.HandleFunc("GET /api/branches/{id}/products", branchHandler.GetProductPrices)
+	mux.Handle("POST /api/branches/{id}/copy-products", middleware.RequireOwner(http.HandlerFunc(branchHandler.CopyProducts)))
+
+	promoSvc.DeactivateExpiredPromos(context.Background(), nil)
 
 	// Apply global rate limiter then CORS, Recovery, Auth
 	authMw := middleware.Authenticate(DB, "/api/auth/login", "/api/health", "/uploads/")
@@ -259,6 +273,8 @@ func runMigrations() {
 		&models.Customer{},
 		&models.StoreSetting{},
 		&models.Expense{},
+		&models.Branch{},
+		&models.ProductBranch{},
 	)
 	if err != nil {
 		log.Fatalf("Auto-migration failed: %v", err)
@@ -267,13 +283,15 @@ func runMigrations() {
 }
 
 func seedDatabase() {
+	var branchOne uint = 1
+
 	var countCat int64
 	DB.Model(&models.Category{}).Count(&countCat)
 	if countCat == 0 {
 		defaultCategories := []models.Category{
-			{Name: "Makanan"},
-			{Name: "Minuman"},
-			{Name: "Cemilan"},
+			{BranchID: &branchOne, Name: "Makanan"},
+			{BranchID: &branchOne, Name: "Minuman"},
+			{BranchID: &branchOne, Name: "Cemilan"},
 		}
 		for _, c := range defaultCategories {
 			if err := DB.Create(&c).Error; err != nil {
@@ -287,16 +305,16 @@ func seedDatabase() {
 	DB.Model(&models.Product{}).Count(&count)
 	if count == 0 {
 		defaultProducts := []models.Product{
-			{Name: "Nasi Goreng Spesial", Category: "Makanan", Price: 25000, CostPrice: 15000, Icon: "restaurant", SKU: "FD-NASIGORENG", Stock: 100},
-			{Name: "Ayam Bakar Madu", Category: "Makanan", Price: 30000, CostPrice: 18000, Icon: "set_meal", SKU: "FD-AYAMBAKAR", Stock: 100},
-			{Name: "Mie Goreng Seafood", Category: "Makanan", Price: 28000, CostPrice: 16000, Icon: "ramen_dining", SKU: "FD-MIEGORENG", Stock: 100},
-			{Name: "Sate Ayam Madura", Category: "Makanan", Price: 20000, CostPrice: 12000, Icon: "kebab_dining", SKU: "FD-SATEAYAM", Stock: 100},
-			{Name: "Es Teh Manis", Category: "Minuman", Price: 5000, CostPrice: 2000, Icon: "local_cafe", SKU: "BV-ESTEH", Stock: 100},
-			{Name: "Es Jeruk Peras", Category: "Minuman", Price: 8000, CostPrice: 3000, Icon: "local_drink", SKU: "BV-ESJERUK", Stock: 100},
-			{Name: "Kopi Susu Gula Aren", Category: "Minuman", Price: 15000, CostPrice: 7000, Icon: "coffee", SKU: "BV-KOPISUSU", Stock: 100},
-			{Name: "Jus Alpukat", Category: "Minuman", Price: 12000, CostPrice: 5000, Icon: "blender", SKU: "BV-JUSALPUKAT", Stock: 100},
-			{Name: "Roti Bakar Coklat", Category: "Cemilan", Price: 15000, CostPrice: 8000, Icon: "bakery_dining", SKU: "SN-ROTIBAKAR", Stock: 100},
-			{Name: "Pisang Goreng Keju", Category: "Cemilan", Price: 12000, CostPrice: 6000, Icon: "tapas", SKU: "SN-PISGORENG", Stock: 100},
+			{BranchID: &branchOne, Name: "Nasi Goreng Spesial", Category: "Makanan", Price: 25000, CostPrice: 15000, Icon: "restaurant", SKU: "FD-NASIGORENG", Stock: 100},
+			{BranchID: &branchOne, Name: "Ayam Bakar Madu", Category: "Makanan", Price: 30000, CostPrice: 18000, Icon: "set_meal", SKU: "FD-AYAMBAKAR", Stock: 100},
+			{BranchID: &branchOne, Name: "Mie Goreng Seafood", Category: "Makanan", Price: 28000, CostPrice: 16000, Icon: "ramen_dining", SKU: "FD-MIEGORENG", Stock: 100},
+			{BranchID: &branchOne, Name: "Sate Ayam Madura", Category: "Makanan", Price: 20000, CostPrice: 12000, Icon: "kebab_dining", SKU: "FD-SATEAYAM", Stock: 100},
+			{BranchID: &branchOne, Name: "Es Teh Manis", Category: "Minuman", Price: 5000, CostPrice: 2000, Icon: "local_cafe", SKU: "BV-ESTEH", Stock: 100},
+			{BranchID: &branchOne, Name: "Es Jeruk Peras", Category: "Minuman", Price: 8000, CostPrice: 3000, Icon: "local_drink", SKU: "BV-ESJERUK", Stock: 100},
+			{BranchID: &branchOne, Name: "Kopi Susu Gula Aren", Category: "Minuman", Price: 15000, CostPrice: 7000, Icon: "coffee", SKU: "BV-KOPISUSU", Stock: 100},
+			{BranchID: &branchOne, Name: "Jus Alpukat", Category: "Minuman", Price: 12000, CostPrice: 5000, Icon: "blender", SKU: "BV-JUSALPUKAT", Stock: 100},
+			{BranchID: &branchOne, Name: "Roti Bakar Coklat", Category: "Cemilan", Price: 15000, CostPrice: 8000, Icon: "bakery_dining", SKU: "SN-ROTIBAKAR", Stock: 100},
+			{BranchID: &branchOne, Name: "Pisang Goreng Keju", Category: "Cemilan", Price: 12000, CostPrice: 6000, Icon: "tapas", SKU: "SN-PISGORENG", Stock: 100},
 		}
 
 		for _, p := range defaultProducts {
@@ -329,6 +347,62 @@ func seedDatabase() {
 			}
 		}
 		log.Println("Database seeded with default users")
+	}
+
+	var branchCount int64
+	DB.Model(&models.Branch{}).Count(&branchCount)
+	if branchCount == 0 {
+		defaultBranches := []models.Branch{
+			{Name: "Cabang Pusat", Code: "PST", Address: "Jl. Pekalipan No. 99", Phone: "081234567890", City: "Cirebon", Active: true},
+			{Name: "Cabang Cirebon", Code: "CBR", Address: "Jl. Siliwangi No. 10", Phone: "081234567891", City: "Cirebon", Active: true},
+		}
+		for _, b := range defaultBranches {
+			if err := DB.Create(&b).Error; err != nil {
+				log.Printf("Failed to seed branch %s: %v", b.Name, err)
+			}
+		}
+		log.Println("Database seeded with default branches")
+
+		// Assign default cashier to first branch
+		var firstBranch models.Branch
+		DB.First(&firstBranch)
+		if firstBranch.ID > 0 {
+			DB.Model(&models.User{}).Where("username = ?", "kasir").Update("branch_id", firstBranch.ID)
+			log.Printf("Assigned default kasir to branch %s", firstBranch.Name)
+		}
+
+		// Set branch-specific pricing for first branch
+		var products []models.Product
+		DB.Find(&products)
+		if firstBranch.ID > 0 {
+			for _, p := range products {
+				branchPrice := p.Price + 5000
+				branchStock := p.Stock + 50
+				pb := models.ProductBranch{
+					BranchID:   firstBranch.ID,
+					ProductID:  p.ID,
+					Price:      branchPrice,
+					CostPrice:  p.CostPrice,
+					Stock:      branchStock,
+					TrackStock: p.TrackStock,
+				}
+				DB.Create(&pb)
+			}
+			log.Printf("Seeded %d product prices for branch %s", len(products), firstBranch.Name)
+		}
+	}
+
+	// Auto-assign existing records without branch_id to first branch
+	var branchCount2 int64
+	DB.Model(&models.Branch{}).Count(&branchCount2)
+	if branchCount2 > 0 {
+		var firstBranch2 models.Branch
+		DB.First(&firstBranch2)
+		DB.Model(&models.Order{}).Where("branch_id IS NULL").Update("branch_id", firstBranch2.ID)
+		DB.Model(&models.Expense{}).Where("branch_id IS NULL").Update("branch_id", firstBranch2.ID)
+		DB.Model(&models.Bundle{}).Where("branch_id IS NULL").Update("branch_id", firstBranch2.ID)
+		DB.Model(&models.Promo{}).Where("branch_id IS NULL").Update("branch_id", firstBranch2.ID)
+		DB.Model(&models.Supplier{}).Where("branch_id IS NULL").Update("branch_id", firstBranch2.ID)
 	}
 }
 

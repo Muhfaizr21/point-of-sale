@@ -5,7 +5,7 @@ import { CartSidebar } from './CartSidebar'
 import { Footer } from './Footer'
 
 export function KasirPage({
-  searchQuery, onSearchChange,
+  searchQuery, onSearchChange, activeBranch,
   categories, selectedCategory, onCategorySelect,
   products, bundles, productsLoading, productsError, refetchProducts,
   activePromos,
@@ -128,6 +128,9 @@ export function KasirPage({
             ))}
           </div>
         )}
+        <div className="mt-12">
+          <Footer />
+        </div>
       </div>
 
       <CartSidebar
@@ -139,11 +142,11 @@ export function KasirPage({
         discountAmount={discountAmount}
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
-        onCheckout={async () => {
-          const res = await checkout()
-          await refetchProducts()
-          return res
-        }}
+            onCheckout={async () => {
+              const res = await checkout(activeBranch || undefined)
+              await refetchProducts()
+              return res
+            }}
         isCheckingOut={isCheckingOut}
         customerName={customerName}
         onCustomerNameChange={setCustomerName}
@@ -195,7 +198,6 @@ export function KasirPage({
         </div>
       )}
 
-      <Footer />
     </main>
   )
 }

@@ -11,6 +11,7 @@ import { useCategories } from './hooks/useCategories'
 import { useBundles } from './hooks/useBundles'
 import { useActivePromos } from './hooks/useActivePromos'
 import { KasirPage } from './components/admin/KasirPage'
+import { BranchPage } from './components/admin/BranchPage'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 
 const DashboardPage = lazy(() => import('./components/admin/DashboardPage').then(m => ({ default: m.DashboardPage })))
@@ -33,6 +34,7 @@ const LandingPage = lazy(() => import('./components/landing/LandingPage'))
 const AboutPage = lazy(() => import('./components/landing/AboutPage').then(m => ({ default: m.AboutPage })))
 const HargaPage = lazy(() => import('./components/landing/HargaPage').then(m => ({ default: m.HargaPage })))
 const KontakPage = lazy(() => import('./components/landing/KontakPage').then(m => ({ default: m.KontakPage })))
+const SuperadminDashboard = lazy(() => import('./components/superadmin/SuperadminDashboard').then(m => ({ default: m.SuperadminDashboard })))
 
 function PageLoading() {
   return (
@@ -77,13 +79,12 @@ function AccessDenied() {
 
 const AdminLayout = ({ children, onToggleSidebar }) => (
   <main className="w-full h-screen flex flex-col relative bg-surface-container-low lg:ml-sidebar-width lg:w-[calc(100%-260px)] transition-all duration-300">
+    <button type="button" onClick={onToggleSidebar}
+      className="lg:hidden fixed left-4 top-4 z-30 p-2 bg-surface rounded-full shadow-md text-on-surface-variant hover:text-primary transition-colors cursor-pointer flex items-center justify-center">
+      <span className="material-symbols-outlined">menu</span>
+    </button>
     <Suspense fallback={<PageLoading />}>{children}</Suspense>
-    <Footer />
   </main>
-)
-
-const PageShell = ({ onToggleSidebar, children }) => (
-  <div className="flex-1 overflow-y-auto hide-scrollbar">{children}</div>
 )
 
 function AppContent() {
@@ -91,9 +92,27 @@ function AppContent() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [branchRefreshKey, setBranchRefreshKey] = useState(0)
+  const [activeBranch, setActiveBranch] = useState(() => {
+    const saved = localStorage.getItem('activeBranch')
+    return saved ? parseInt(saved) : null
+  })
+  // Cashier always scoped to own branch; owner can switch
+  const effectiveBranch = useMemo(() => {
+    if (!user) return activeBranch
+    if (user.role === 'owner') return activeBranch
+    return user.branch_id || null
+  }, [user, activeBranch])
   const [storeName, setStoreName] = useState(localStorage.getItem('storeName') || 'PEKALIPAN')
   const [storeLogo, setStoreLogo] = useState(localStorage.getItem('storeLogo') || '')
   const [storeAddress, setStoreAddress] = useState(localStorage.getItem('storeAddress') || 'Jl. Pekalipan No. 99, Cirebon')
+
+  const handleBranchChange = (branchId) => {
+    setActiveBranch(branchId)
+    if (branchId) localStorage.setItem('activeBranch', branchId)
+    else localStorage.removeItem('activeBranch')
+    navigate('/dashboard')
+  }
 
   const handleSettingsChange = () => {
     setStoreName(localStorage.getItem('storeName') || 'PEKALIPAN')
@@ -140,15 +159,15 @@ function AppContent() {
     products, allProducts, selectedCategory, setSelectedCategory,
     searchQuery, setSearchQuery, addProduct, updateProduct, deleteProduct,
     loading: productsLoading, error: productsError, refetchProducts,
-  } = useProducts()
+  } = useProducts(effectiveBranch)
 
   const {
     categories: rawCategories, loading: categoriesLoading, error: categoriesError,
     addCategory, updateCategory, deleteCategory,
-  } = useCategories()
+  } = useCategories(effectiveBranch)
 
   const { bundles, refetchBundles } = useBundles()
-  const { promos: activePromos, refetch: refetchPromos } = useActivePromos()
+  const { promos: activePromos, refetch: refetchPromos } = useActivePromos(effectiveBranch)
 
   useEffect(() => {
     if (location.pathname === '/kasir') { refetchBundles(); refetchPromos() }
@@ -174,6 +193,9 @@ function AppContent() {
           currentTab={currentTab}
           onTabSelect={handleTabSelect}
           storeName={storeName} storeLogo={storeLogo} storeAddress={storeAddress}
+          activeBranch={effectiveBranch}
+          onBranchChange={handleBranchChange}
+          branchRefreshKey={branchRefreshKey}
         />
       )}
 
@@ -187,7 +209,7 @@ function AppContent() {
         <Route path="/kasir" element={
           <ProtectedRoute feature="kasir">
             <KasirPage
-              searchQuery={searchQuery} onSearchChange={setSearchQuery}
+              searchQuery={searchQuery} onSearchChange={setSearchQuery} activeBranch={effectiveBranch}
               categories={categories} selectedCategory={selectedCategory} onCategorySelect={setSelectedCategory}
               products={products} bundles={bundles} productsLoading={productsLoading} productsError={productsError} refetchProducts={refetchProducts}
               activePromos={activePromos}
@@ -218,7 +240,7 @@ function AppContent() {
         <Route path="/dashboard" element={
           <ProtectedRoute feature="dashboard">
             <AdminLayout onToggleSidebar={() => setIsSidebarOpen(true)}>
-              <DashboardPage onToggleSidebar={() => setIsSidebarOpen(true)} />
+              <DashboardPage onToggleSidebar={() => setIsSidebarOpen(true)} activeBranch={effectiveBranch} />
             </AdminLayout>
           </ProtectedRoute>
         } />
@@ -226,7 +248,7 @@ function AppContent() {
         <Route path="/transaksi" element={
           <ProtectedRoute feature="transaksi">
             <AdminLayout onToggleSidebar={() => setIsSidebarOpen(true)}>
-              <TransaksiPage onToggleSidebar={() => setIsSidebarOpen(true)} />
+              <TransaksiPage onToggleSidebar={() => setIsSidebarOpen(true)} activeBranch={effectiveBranch} />
             </AdminLayout>
           </ProtectedRoute>
         } />
@@ -234,7 +256,7 @@ function AppContent() {
         <Route path="/laporan" element={
           <ProtectedRoute role="owner" feature="laporan">
             <AdminLayout onToggleSidebar={() => setIsSidebarOpen(true)}>
-              <LaporanPage onToggleSidebar={() => setIsSidebarOpen(true)} />
+              <LaporanPage onToggleSidebar={() => setIsSidebarOpen(true)} activeBranch={effectiveBranch} />
             </AdminLayout>
           </ProtectedRoute>
         } />
@@ -242,7 +264,7 @@ function AppContent() {
         <Route path="/pesanan" element={
           <ProtectedRoute>
             <AdminLayout onToggleSidebar={() => setIsSidebarOpen(true)}>
-              <OrderPage onToggleSidebar={() => setIsSidebarOpen(true)} />
+              <OrderPage onToggleSidebar={() => setIsSidebarOpen(true)} activeBranch={effectiveBranch} />
             </AdminLayout>
           </ProtectedRoute>
         } />
@@ -256,6 +278,7 @@ function AppContent() {
                 deleteCategory={async (id) => { await deleteCategory(id); await refetchProducts() }}
                 onToggleSidebar={() => setIsSidebarOpen(true)}
                 loading={categoriesLoading} error={categoriesError}
+                activeBranch={effectiveBranch}
               />
             </AdminLayout>
           </ProtectedRoute>
@@ -272,7 +295,7 @@ function AppContent() {
         <Route path="/bundel" element={
           <ProtectedRoute role="owner" feature="bundel">
             <AdminLayout onToggleSidebar={() => setIsSidebarOpen(true)}>
-              <BundlePage products={allProducts} onToggleSidebar={() => setIsSidebarOpen(true)} />
+              <BundlePage products={allProducts} onToggleSidebar={() => setIsSidebarOpen(true)} activeBranch={effectiveBranch} />
             </AdminLayout>
           </ProtectedRoute>
         } />
@@ -280,7 +303,7 @@ function AppContent() {
         <Route path="/promo" element={
           <ProtectedRoute role="owner" feature="promo">
             <AdminLayout onToggleSidebar={() => setIsSidebarOpen(true)}>
-              <PromoPage onToggleSidebar={() => setIsSidebarOpen(true)} />
+              <PromoPage onToggleSidebar={() => setIsSidebarOpen(true)} activeBranch={effectiveBranch} />
             </AdminLayout>
           </ProtectedRoute>
         } />
@@ -288,7 +311,15 @@ function AppContent() {
         <Route path="/stok" element={
           <ProtectedRoute role="owner" feature="stok">
             <AdminLayout onToggleSidebar={() => setIsSidebarOpen(true)}>
-              <StockPage products={allProducts} onToggleSidebar={() => setIsSidebarOpen(true)} onRefreshProducts={refetchProducts} />
+              <StockPage products={allProducts} onToggleSidebar={() => setIsSidebarOpen(true)} onRefreshProducts={refetchProducts} activeBranch={effectiveBranch} />
+            </AdminLayout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/cabang" element={
+          <ProtectedRoute role="owner">
+            <AdminLayout onToggleSidebar={() => setIsSidebarOpen(true)}>
+              <BranchPage onToggleSidebar={() => setIsSidebarOpen(true)} onBranchChange={() => setBranchRefreshKey(k => k + 1)} />
             </AdminLayout>
           </ProtectedRoute>
         } />
@@ -312,7 +343,7 @@ function AppContent() {
         <Route path="/supplier" element={
           <ProtectedRoute role="owner" feature="supplier">
             <AdminLayout onToggleSidebar={() => setIsSidebarOpen(true)}>
-              <SupplierPage onToggleSidebar={() => setIsSidebarOpen(true)} />
+              <SupplierPage onToggleSidebar={() => setIsSidebarOpen(true)} activeBranch={effectiveBranch} />
             </AdminLayout>
           </ProtectedRoute>
         } />
@@ -328,7 +359,7 @@ function AppContent() {
         <Route path="/pengeluaran" element={
           <ProtectedRoute feature="pengeluaran">
             <AdminLayout onToggleSidebar={() => setIsSidebarOpen(true)}>
-              <ExpensePage onToggleSidebar={() => setIsSidebarOpen(true)} />
+              <ExpensePage onToggleSidebar={() => setIsSidebarOpen(true)} activeBranch={effectiveBranch} />
             </AdminLayout>
           </ProtectedRoute>
         } />
@@ -336,9 +367,15 @@ function AppContent() {
         <Route path="/modal" element={
           <ProtectedRoute feature="modal">
             <AdminLayout onToggleSidebar={() => setIsSidebarOpen(true)}>
-              <ModalPage onToggleSidebar={() => setIsSidebarOpen(true)} />
+              <ModalPage onToggleSidebar={() => setIsSidebarOpen(true)} activeBranch={effectiveBranch} />
             </AdminLayout>
           </ProtectedRoute>
+        } />
+
+        <Route path="/superadmin" element={
+          <Suspense fallback={<PageLoading />}>
+            <SuperadminDashboard />
+          </Suspense>
         } />
 
         <Route path="*" element={
@@ -353,7 +390,6 @@ function AppContent() {
                 <h3 className="text-headline-md font-semibold text-on-surface capitalize">{currentTab} Page</h3>
                 <p className="text-body-md">Halaman sedang dalam tahap pengembangan.</p>
               </div>
-              <Footer />
             </main>
           </ProtectedRoute>
         } />

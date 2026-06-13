@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"point-of-sale/backend/app/middleware"
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/services"
 	"strconv"
@@ -17,7 +18,11 @@ func NewBundleHandler(service services.BundleService) *BundleHandler {
 }
 
 func (h *BundleHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	bundles, err := h.service.GetAllBundles(r.Context())
+	var branchID *uint
+	if user := middleware.GetUser(r); user != nil {
+		branchID = user.BranchID
+	}
+	bundles, err := h.service.GetAllBundles(r.Context(), branchID)
 	if err != nil {
 		models.WriteError(w, err)
 		return
@@ -47,6 +52,11 @@ func (h *BundleHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format input tidak valid", 400))
 		return
+	}
+	if req.BranchID == nil {
+		if user := middleware.GetUser(r); user != nil {
+			req.BranchID = user.BranchID
+		}
 	}
 	bundle, err := h.service.CreateBundle(r.Context(), &req)
 	if err != nil {

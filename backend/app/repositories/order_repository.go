@@ -13,7 +13,7 @@ type OrderRepository interface {
 	GetAll(ctx context.Context) ([]models.Order, error)
 	GetFiltered(ctx context.Context, query *models.OrderQuery) ([]models.Order, int64, error)
 	GetByID(ctx context.Context, id uint) (*models.Order, error)
-	GetByCustomerID(ctx context.Context, customerID uint) ([]models.Order, error)
+	GetByCustomerID(ctx context.Context, customerID uint, branchID *uint) ([]models.Order, error)
 	Update(ctx context.Context, order *models.Order) error
 }
 
@@ -74,6 +74,10 @@ func (r *orderRepository) GetFiltered(ctx context.Context, query *models.OrderQu
 		db = db.Where("created_at <= ?", query.DateTo+" 23:59:59")
 	}
 
+	if query.BranchID != nil {
+		db = db.Where("branch_id = ?", *query.BranchID)
+	}
+
 	// Get total count before pagination
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -102,7 +106,7 @@ func (r *orderRepository) GetFiltered(ctx context.Context, query *models.OrderQu
 	}
 	offset := (page - 1) * limit
 
-	err := db.Preload("OrderItems").Preload("OrderItems.Product").
+	err := db.Preload("Branch").Preload("OrderItems").Preload("OrderItems.Product").
 		Offset(offset).
 		Limit(limit).
 		Find(&orders).Error
@@ -110,9 +114,13 @@ func (r *orderRepository) GetFiltered(ctx context.Context, query *models.OrderQu
 	return orders, total, err
 }
 
-func (r *orderRepository) GetByCustomerID(ctx context.Context, customerID uint) ([]models.Order, error) {
+func (r *orderRepository) GetByCustomerID(ctx context.Context, customerID uint, branchID *uint) ([]models.Order, error) {
 	var orders []models.Order
-	err := r.db.WithContext(ctx).Preload("OrderItems").Where("customer_id = ?", customerID).Order("created_at desc").Find(&orders).Error
+	db := r.db.WithContext(ctx).Preload("OrderItems").Where("customer_id = ?", customerID)
+	if branchID != nil {
+		db = db.Where("branch_id = ?", *branchID)
+	}
+	err := db.Order("created_at desc").Find(&orders).Error
 	return orders, err
 }
 

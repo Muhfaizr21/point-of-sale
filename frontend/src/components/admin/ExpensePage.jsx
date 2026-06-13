@@ -21,7 +21,7 @@ function formatPrice(v) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v).replace('IDR', 'Rp')
 }
 
-export function ExpensePage({ onToggleSidebar }) {
+export function ExpensePage({ onToggleSidebar, activeBranch = null }) {
   const [expenses, setExpenses] = useState([])
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total_items: 0, total_pages: 0 })
   const [loading, setLoading] = useState(true)
@@ -40,14 +40,14 @@ export function ExpensePage({ onToggleSidebar }) {
   const fetchExpenses = useCallback(async (p = 1) => {
     setLoading(true)
     try {
-      const res = await apiClient.get(`/api/expenses?page=${p}&limit=20&date_from=${dateFrom}&date_to=${dateTo}&category=${filterCategory}&search=${searchQuery}`)
+      const res = await apiClient.get(`/api/expenses?page=${p}&limit=20&date_from=${dateFrom}&date_to=${dateTo}&category=${filterCategory}&search=${searchQuery}&branch_id=${activeBranch}`)
       if (res) {
         setExpenses(res.data || [])
         setPagination(res.pagination || { page: 1, limit: 20, total_items: 0, total_pages: 0 })
       }
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
-  }, [dateFrom, dateTo, filterCategory, searchQuery])
+  }, [dateFrom, dateTo, filterCategory, searchQuery, activeBranch])
 
   useEffect(() => { fetchExpenses(1) }, [fetchExpenses])
   useEffect(() => { setPagination(p => ({ ...p, page: 1 })) }, [dateFrom, dateTo, filterCategory, searchQuery])

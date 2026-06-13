@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"point-of-sale/backend/app/middleware"
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/services"
 	"strconv"
@@ -88,7 +89,11 @@ func (h *CustomerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 func (h *CustomerHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseUint(r.PathValue("id"), 10, 32)
-	orders, err := h.svc.GetOrders(r.Context(), uint(id))
+	var branchID *uint
+	if user := middleware.GetUser(r); user != nil {
+		branchID = user.BranchID
+	}
+	orders, err := h.svc.GetOrders(r.Context(), uint(id), branchID)
 	if err != nil { models.WriteError(w, err); return }
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(orders)

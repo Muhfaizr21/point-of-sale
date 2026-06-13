@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Button } from '../common/Button'
 import { TopBar } from '../common/TopBar'
+import { apiClient } from '../../services/apiClient'
 import defaultLogo from '../../assets/pekalipan-logo.jpg'
 
 const DEFAULT_PAYMENT_METHODS = [
@@ -103,15 +104,13 @@ export function SettingsPage({ onToggleSidebar, onSettingsChange }) {
       },
     }))
     // Store sensitive keys (server_key) on backend only
-    import('../../services/apiClient').then(({ apiClient }) => {
-      apiClient.put('/api/settings/midtrans_config', {
-        server_key: midtransServerKey,
-        client_key: midtransClientKey,
-        merchant_id: midtransMerchantId,
-        environment: midtransEnv,
-        enabled: midtransEnabled,
-      }).catch(() => {})
-    })
+    apiClient.post('/api/settings/midtrans', {
+      server_key: midtransServerKey,
+      client_key: midtransClientKey,
+      merchant_id: midtransMerchantId,
+      environment: midtransEnv,
+      enabled: midtransEnabled,
+    }).catch((err) => showNotif('error', 'Gagal menyimpan konfigurasi Midtrans', err.message))
 
     if (onSettingsChange) onSettingsChange()
     showNotif('success', 'Pengaturan berhasil disimpan!', 'Semua perubahan telah diterapkan.')

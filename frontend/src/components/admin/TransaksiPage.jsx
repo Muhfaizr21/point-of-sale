@@ -29,7 +29,7 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import defaultLogo from '../../assets/pekalipan-logo.jpg'
 
-export function TransaksiPage({ onToggleSidebar }) {
+export function TransaksiPage({ onToggleSidebar, activeBranch = null }) {
   // Filter & Pagination states
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -144,6 +144,7 @@ export function TransaksiPage({ onToggleSidebar }) {
         dateTo,
         sortBy: 'created_at',
         sortOrder: 'desc',
+        branchId: activeBranch,
       })
 
       setOrders(result.data || [])
@@ -159,7 +160,7 @@ export function TransaksiPage({ onToggleSidebar }) {
     } finally {
       setLoading(false)
     }
-  }, [getDateRange, searchQuery, selectedPaymentMethod, selectedStatus, pagination.limit])
+  }, [getDateRange, searchQuery, selectedPaymentMethod, selectedStatus, pagination.limit, activeBranch])
 
   const [checkoutVersion, setCheckoutVersion] = useState(0)
   const fetchRef = useRef(fetchOrders)
@@ -398,6 +399,7 @@ ${centerText(receiptFooter)}
         dateTo,
         sortBy: 'created_at',
         sortOrder: 'desc',
+        branchId: activeBranch,
       })
       
       const allOrders = allOrdersResult.data || []
@@ -669,6 +671,7 @@ ${centerText(receiptFooter)}
                 <tr className="bg-surface-container-high border-b border-outline-variant text-label-sm text-on-surface-variant">
                   <th className="p-md font-semibold w-12">#</th>
                   <th className="p-md font-semibold">Invoice</th>
+                  {!activeBranch && <th className="p-md font-semibold hidden lg:table-cell">Cabang</th>}
                   <th className="p-md font-semibold">Tanggal</th>
                   <th className="p-md font-semibold hidden sm:table-cell">Pelanggan</th>
                   <th className="p-md font-semibold hidden md:table-cell">Item</th>
@@ -707,6 +710,19 @@ ${centerText(receiptFooter)}
                       <td className="p-md">
                         <span className="font-data-mono text-primary font-semibold">{order.invoice_number}</span>
                       </td>
+                      {/* Branch */}
+                      {!activeBranch && (
+                      <td className="p-md hidden lg:table-cell">
+                        {order.branch ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/5 text-primary rounded text-[10px] font-semibold">
+                            <span className="material-symbols-outlined text-[10px]">store</span>
+                            {order.branch.name}
+                          </span>
+                        ) : (
+                          <span className="text-label-xs text-on-surface-variant">-</span>
+                        )}
+                      </td>
+                      )}
                       {/* Date */}
                       <td className="p-md">
                         <span className="text-on-surface-variant">{formatDate(order.created_at)}</span>

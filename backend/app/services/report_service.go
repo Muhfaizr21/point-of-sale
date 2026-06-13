@@ -10,8 +10,8 @@ import (
 
 type ReportService interface {
 	GetStockReport(ctx context.Context) (*models.StockReportResponse, error)
-	GetCustomerReport(ctx context.Context, dateFrom, dateTo string) (*models.CustomerReportResponse, error)
-	GetProfitLoss(ctx context.Context, dateFrom, dateTo string) (*models.ProfitLossResponse, error)
+	GetCustomerReport(ctx context.Context, dateFrom, dateTo string, branchID *uint) (*models.CustomerReportResponse, error)
+	GetProfitLoss(ctx context.Context, dateFrom, dateTo string, branchID *uint) (*models.ProfitLossResponse, error)
 }
 
 type reportService struct {
@@ -77,7 +77,7 @@ func (s *reportService) GetStockReport(ctx context.Context) (*models.StockReport
 	}, nil
 }
 
-func (s *reportService) GetCustomerReport(ctx context.Context, dateFrom, dateTo string) (*models.CustomerReportResponse, error) {
+func (s *reportService) GetCustomerReport(ctx context.Context, dateFrom, dateTo string, branchID *uint) (*models.CustomerReportResponse, error) {
 	from, to := parseDateRange(dateFrom, dateTo)
 
 	var customers []models.Customer
@@ -91,10 +91,13 @@ func (s *reportService) GetCustomerReport(ctx context.Context, dateFrom, dateTo 
 	for _, c := range customers {
 		var orderCount int
 		var lastOrder time.Time
-		s.db.WithContext(ctx).
+		orderQuery := s.db.WithContext(ctx).
 			Model(&models.Order{}).
-			Where("customer_id = ? AND created_at >= ? AND created_at <= ? AND order_status IN ?", c.ID, from, to.AddDate(0, 0, 1), []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"}).
-			Select("COALESCE(COUNT(*), 0), COALESCE(MAX(created_at), '1970-01-01'::timestamp)").
+			Where("customer_id = ? AND created_at >= ? AND created_at <= ? AND order_status IN ?", c.ID, from, to.AddDate(0, 0, 1), []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"})
+		if branchID != nil {
+			orderQuery = orderQuery.Where("branch_id = ?", *branchID)
+		}
+		orderQuery.Select("COALESCE(COUNT(*), 0), COALESCE(MAX(created_at), '1970-01-01'::timestamp)").
 			Row().Scan(&orderCount, &lastOrder)
 
 		if orderCount == 0 {
@@ -146,19 +149,22 @@ func (s *reportService) GetCustomerReport(ctx context.Context, dateFrom, dateTo 
 	}, nil
 }
 
-func (s *reportService) GetProfitLoss(ctx context.Context, dateFrom, dateTo string) (*models.ProfitLossResponse, error) {
+func (s *reportService) GetProfitLoss(ctx context.Context, dateFrom, dateTo string, branchID *uint) (*models.ProfitLossResponse, error) {
 	from, to := parseDateRange(dateFrom, dateTo)
 
 	var orders []models.Order
-	err := s.db.WithContext(ctx).
+	dbQuery := s.db.WithContext(ctx).
+		Preload("Branch").
 		Preload("OrderItems").
 		Preload("OrderItems.Product", func(db *gorm.DB) *gorm.DB {
 			return db.Unscoped()
 		}).
 		Where("created_at >= ? AND created_at <= ?", from, to.AddDate(0, 0, 1)).
-		Where("order_status IN ?", []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"}).
-		Order("created_at asc").
-		Find(&orders).Error
+		Where("order_status IN ?", []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"})
+	if branchID != nil {
+		dbQuery = dbQuery.Where("branch_id = ?", *branchID)
+	}
+	err := dbQuery.Order("created_at asc").Find(&orders).Error
 	if err != nil {
 		return nil, err
 	}
@@ -168,10 +174,13 @@ func (s *reportService) GetProfitLoss(ctx context.Context, dateFrom, dateTo stri
 
 	// Fetch expenses in date range
 	var expenses []models.Expense
-	s.db.WithContext(ctx).
+	expQuery := s.db.WithContext(ctx).
 		Model(&models.Expense{}).
-		Where("date >= ? AND date <= ?", from.Format("2006-01-02"), to.Format("2006-01-02")).
-		Find(&expenses)
+		Where("date >= ? AND date <= ?", from.Format("2006-01-02"), to.Format("2006-01-02"))
+	if branchID != nil {
+		expQuery = expQuery.Where("branch_id = ?", *branchID)
+	}
+	expQuery.Find(&expenses)
 
 	totalExpense := 0
 	totalModal := 0

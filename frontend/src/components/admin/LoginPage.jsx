@@ -27,6 +27,13 @@ export function LoginPage() {
       setError('Username dan password wajib diisi')
       return
     }
+
+    // Bypass login khusus Superadmin (SaaS Mode Mockup)
+    if (username === 'superadmin@sentrakas.com' && password === 'superadmin123') {
+      navigate('/superadmin', { replace: true })
+      return
+    }
+
     setLoading(true)
     try {
       await login(username, password)
@@ -115,7 +122,7 @@ export function LoginPage() {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Masukkan username"
+                  placeholder="Masukkan username atau email"
                   autoFocus
                   className="w-full pl-12 pr-4 py-4 bg-surface-container-lowest border-2 border-outline-variant/40 rounded-2xl text-body-lg text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10 outline-none transition-all hover:border-outline-variant"
                 />

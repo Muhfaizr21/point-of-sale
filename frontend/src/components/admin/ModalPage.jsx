@@ -22,7 +22,7 @@ function formatInputNumber(val) {
   return new Intl.NumberFormat('id-ID').format(parseInt(clean))
 }
 
-export function ModalPage({ onToggleSidebar }) {
+export function ModalPage({ onToggleSidebar, activeBranch = null }) {
   const [entries, setEntries] = useState([])
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total_items: 0, total_pages: 0 })
   const [loading, setLoading] = useState(true)
@@ -41,14 +41,14 @@ export function ModalPage({ onToggleSidebar }) {
   const fetchEntries = useCallback(async (p = 1) => {
     setLoading(true)
     try {
-      const res = await apiClient.get(`/api/expenses?page=${p}&limit=20&category=Modal&date_from=${dateFrom}&date_to=${dateTo}`)
+      const res = await apiClient.get(`/api/expenses?page=${p}&limit=20&category=Modal&date_from=${dateFrom}&date_to=${dateTo}&branch_id=${activeBranch}`)
       if (res) {
         setEntries(res.data || [])
         setPagination(res.pagination || { page: 1, limit: 20, total_items: 0, total_pages: 0 })
       }
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
-  }, [dateFrom, dateTo])
+  }, [dateFrom, dateTo, activeBranch])
 
   useEffect(() => { fetchEntries(1) }, [fetchEntries])
 

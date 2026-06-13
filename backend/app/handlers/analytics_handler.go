@@ -3,8 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"point-of-sale/backend/app/middleware"
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/services"
+	"strconv"
 	"strings"
 )
 
@@ -27,6 +29,16 @@ func (h *AnalyticsHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) 
 	// Parse date_to
 	if dt := r.URL.Query().Get("date_to"); dt != "" {
 		query.DateTo = strings.TrimSpace(dt)
+	}
+
+	// Parse branch_id
+	if bid := r.URL.Query().Get("branch_id"); bid != "" {
+		if id, err := strconv.ParseUint(bid, 10, 32); err == nil {
+			uid := uint(id)
+			query.BranchID = &uid
+		}
+	} else if user := middleware.GetUser(r); user != nil && user.BranchID != nil {
+		query.BranchID = user.BranchID
 	}
 
 	result, err := h.service.GetAnalytics(r.Context(), query)

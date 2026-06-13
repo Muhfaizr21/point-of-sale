@@ -8,7 +8,7 @@ import (
 )
 
 type BundleService interface {
-	GetAllBundles(ctx context.Context) ([]models.Bundle, error)
+	GetAllBundles(ctx context.Context, branchID *uint) ([]models.Bundle, error)
 	GetBundleByID(ctx context.Context, id uint) (*models.Bundle, error)
 	CreateBundle(ctx context.Context, req *models.CreateBundleRequest) (*models.Bundle, error)
 	UpdateBundle(ctx context.Context, id uint, req *models.UpdateBundleRequest) (*models.Bundle, error)
@@ -24,8 +24,8 @@ func NewBundleService(bundleRepo repositories.BundleRepository) BundleService {
 	return &bundleService{bundleRepo: bundleRepo}
 }
 
-func (s *bundleService) GetAllBundles(ctx context.Context) ([]models.Bundle, error) {
-	return s.bundleRepo.GetAll(ctx)
+func (s *bundleService) GetAllBundles(ctx context.Context, branchID *uint) ([]models.Bundle, error) {
+	return s.bundleRepo.GetAll(ctx, branchID)
 }
 
 func (s *bundleService) GetBundleByID(ctx context.Context, id uint) (*models.Bundle, error) {
@@ -62,11 +62,12 @@ func (s *bundleService) CreateBundle(ctx context.Context, req *models.CreateBund
 		active = *req.Active
 	}
 	bundle := &models.Bundle{
-		Name:   req.Name,
-		Price:  req.Price,
-		Icon:   req.Icon,
-		Active: active,
-		Items:  items,
+		BranchID: req.BranchID,
+		Name:     req.Name,
+		Price:    req.Price,
+		Icon:     req.Icon,
+		Active:   active,
+		Items:    items,
 	}
 
 	return s.bundleRepo.Create(ctx, bundle)

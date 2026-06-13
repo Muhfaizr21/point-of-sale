@@ -14,6 +14,7 @@ type ProductVariation struct {
 
 type Product struct {
 	ID         uint           `gorm:"primaryKey;autoIncrement" json:"id"`
+	BranchID   *uint          `gorm:"index" json:"branch_id,omitempty"`
 	Name       string         `gorm:"type:varchar(255);not null" json:"name"`
 	Category   string         `gorm:"type:varchar(100);not null" json:"category"`
 	Price      int            `gorm:"type:integer;not null" json:"price"`
@@ -29,6 +30,7 @@ type Product struct {
 }
 
 type CreateProductRequest struct {
+	BranchID   *uint              `json:"branch_id,omitempty"`
 	Name       string             `json:"name"`
 	SKU        string             `json:"sku"`
 	Category   string             `json:"category"`

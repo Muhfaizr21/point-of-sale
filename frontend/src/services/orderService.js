@@ -1,6 +1,5 @@
 import { apiClient, API_BASE_URL } from './apiClient'
 
-// Build query string from params
 const buildQueryString = (params) => {
   const queryParams = new URLSearchParams()
   Object.entries(params).forEach(([key, value]) => {
@@ -13,59 +12,40 @@ const buildQueryString = (params) => {
 }
 
 export const orderService = {
-  // Get paginated orders with filters
   getOrders: async ({
-    page = 1,
-    limit = 10,
-    search = '',
-    paymentMethod = '',
-    status = '',
-    dateFrom = '',
-    dateTo = '',
-    sortBy = 'created_at',
-    sortOrder = 'desc',
+    page = 1, limit = 10, search = '', paymentMethod = '',
+    status = '', dateFrom = '', dateTo = '',
+    sortBy = 'created_at', sortOrder = 'desc', branchId,
   } = {}) => {
     const params = {
-      page,
-      limit,
-      search: search.trim(),
-      payment_method: paymentMethod,
-      status,
-      date_from: dateFrom,
-      date_to: dateTo,
-      sort_by: sortBy,
-      sort_order: sortOrder,
+      page, limit, search: search.trim(),
+      payment_method: paymentMethod, status,
+      date_from: dateFrom, date_to: dateTo,
+      sort_by: sortBy, sort_order: sortOrder,
+      branch_id: branchId,
     }
     const queryString = buildQueryString(params)
     return apiClient.get(`/api/orders${queryString}`)
   },
 
-  // Get single order by ID
   getOrderById: async (id) => {
     return apiClient.get(`/api/orders/${id}`)
   },
 
-  // Create new order (checkout)
   createOrder: async (orderData) => {
     return apiClient.post('/api/orders', orderData)
   },
 
-  // Update order status or notes
   updateOrder: async (id, updateData) => {
     return apiClient.put(`/api/orders/${id}`, updateData)
   },
 
-  // Get analytics data
-  getAnalytics: async ({ dateFrom = '', dateTo = '' } = {}) => {
-    const params = {
-      date_from: dateFrom,
-      date_to: dateTo,
-    }
+  getAnalytics: async ({ dateFrom = '', dateTo = '', branchId } = {}) => {
+    const params = { date_from: dateFrom, date_to: dateTo, branch_id: branchId }
     const queryString = buildQueryString(params)
     return apiClient.get(`/api/analytics${queryString}`)
   },
 
-  // Build export URL with current filters
   getExportUrl: (params = {}) => {
     const queryString = buildQueryString(params)
     return `${API_BASE_URL}/api/orders/export${queryString}`

@@ -11,9 +11,15 @@ import (
 	"strings"
 )
 
+type productBranchOverride interface {
+	GetByBranchProduct(ctx context.Context, branchID, productID uint) (*models.ProductBranch, error)
+	GetByBranch(ctx context.Context, branchID uint) ([]models.ProductBranch, error)
+}
+
 type ProductService interface {
 	GetAllProducts(ctx context.Context) ([]models.Product, error)
-	GetAllProductsPaginated(ctx context.Context, page, limit int, search, category string) ([]models.Product, int64, error)
+	GetAllProductsPaginated(ctx context.Context, page, limit int, search, category string, branchID *uint) ([]models.Product, int64, error)
+	GetAllByBranch(ctx context.Context, branchID uint) ([]models.Product, error)
 	GetProductByID(ctx context.Context, id uint) (*models.Product, error)
 	CreateProduct(ctx context.Context, req *models.CreateProductRequest) (*models.Product, error)
 	UpdateProduct(ctx context.Context, id uint, req *models.UpdateProductRequest) (*models.Product, error)
@@ -21,19 +27,44 @@ type ProductService interface {
 }
 
 type productService struct {
-	repo repositories.ProductRepository
+	repo               repositories.ProductRepository
+	productBranchRepo  productBranchOverride
 }
 
-func NewProductService(repo repositories.ProductRepository) ProductService {
-	return &productService{repo: repo}
+func NewProductService(repo repositories.ProductRepository, pbr productBranchOverride) ProductService {
+	return &productService{repo: repo, productBranchRepo: pbr}
 }
 
 func (s *productService) GetAllProducts(ctx context.Context) ([]models.Product, error) {
 	return s.repo.GetAll(ctx)
 }
 
-func (s *productService) GetAllProductsPaginated(ctx context.Context, page, limit int, search, category string) ([]models.Product, int64, error) {
-	return s.repo.GetAllPaginated(ctx, page, limit, search, category)
+func (s *productService) GetAllProductsPaginated(ctx context.Context, page, limit int, search, category string, branchID *uint) ([]models.Product, int64, error) {
+	return s.repo.GetAllPaginated(ctx, page, limit, search, category, branchID)
+}
+
+func (s *productService) GetAllByBranch(ctx context.Context, branchID uint) ([]models.Product, error) {
+	products, err := s.repo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	overrides, err := s.productBranchRepo.GetByBranch(ctx, branchID)
+	if err != nil {
+		return nil, err
+	}
+	overrideMap := make(map[uint]*models.ProductBranch)
+	for i := range overrides {
+		overrideMap[overrides[i].ProductID] = &overrides[i]
+	}
+	for i := range products {
+		if ov, ok := overrideMap[products[i].ID]; ok {
+			products[i].Price = ov.Price
+			products[i].CostPrice = ov.CostPrice
+			products[i].Stock = ov.Stock
+			products[i].TrackStock = ov.TrackStock
+		}
+	}
+	return products, nil
 }
 
 func (s *productService) GetProductByID(ctx context.Context, id uint) (*models.Product, error) {
@@ -66,6 +97,7 @@ func (s *productService) CreateProduct(ctx context.Context, req *models.CreatePr
 	}
 
 	product := &models.Product{
+		BranchID:   req.BranchID,
 		Name:       req.Name,
 		Category:   req.Category,
 		Price:      req.Price,

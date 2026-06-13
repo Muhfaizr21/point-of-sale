@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { apiClient } from '../../services/apiClient'
 import { TopBar } from '../common/TopBar'
 
-export function SupplierPage({ onToggleSidebar }) {
+export function SupplierPage({ onToggleSidebar, activeBranch = null }) {
   const [suppliers, setSuppliers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -17,10 +17,10 @@ export function SupplierPage({ onToggleSidebar }) {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    try { setSuppliers(await apiClient.get('/api/suppliers') || []) }
+    try { setSuppliers(await apiClient.get(`/api/suppliers${activeBranch ? `?branch_id=${activeBranch}` : ''}`) || []) }
     catch (err) { console.error(err) }
     finally { setLoading(false) }
-  }, [])
+  }, [activeBranch])
 
   useEffect(() => { fetchData() }, [fetchData])
   useEffect(() => { setPage(1) }, [searchQuery])

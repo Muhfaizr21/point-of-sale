@@ -8,8 +8,8 @@ import (
 )
 
 type SupplierService interface {
-	GetAll(ctx context.Context) ([]models.Supplier, error)
-	GetAllPaginated(ctx context.Context, page, limit int, search string) ([]models.Supplier, int64, error)
+	GetAll(ctx context.Context, branchID *uint) ([]models.Supplier, error)
+	GetAllPaginated(ctx context.Context, page, limit int, search string, branchID *uint) ([]models.Supplier, int64, error)
 	GetByID(ctx context.Context, id uint) (*models.Supplier, error)
 	Create(ctx context.Context, req *models.CreateSupplierRequest) (*models.Supplier, error)
 	Update(ctx context.Context, id uint, req *models.UpdateSupplierRequest) (*models.Supplier, error)
@@ -24,12 +24,12 @@ func NewSupplierService(repo repositories.SupplierRepository) SupplierService {
 	return &supplierService{repo: repo}
 }
 
-func (s *supplierService) GetAll(ctx context.Context) ([]models.Supplier, error) {
-	return s.repo.GetAll(ctx)
+func (s *supplierService) GetAll(ctx context.Context, branchID *uint) ([]models.Supplier, error) {
+	return s.repo.GetAll(ctx, branchID)
 }
 
-func (s *supplierService) GetAllPaginated(ctx context.Context, page, limit int, search string) ([]models.Supplier, int64, error) {
-	return s.repo.GetAllPaginated(ctx, page, limit, search)
+func (s *supplierService) GetAllPaginated(ctx context.Context, page, limit int, search string, branchID *uint) ([]models.Supplier, int64, error) {
+	return s.repo.GetAllPaginated(ctx, page, limit, search, branchID)
 }
 
 func (s *supplierService) GetByID(ctx context.Context, id uint) (*models.Supplier, error) {
@@ -41,6 +41,7 @@ func (s *supplierService) Create(ctx context.Context, req *models.CreateSupplier
 		return nil, models.NewAPIError(models.ErrInvalidInput, "Nama supplier wajib diisi", 400)
 	}
 	return s.repo.Create(ctx, &models.Supplier{
+		BranchID:      req.BranchID,
 		Name:          req.Name,
 		ContactPerson: req.ContactPerson,
 		Phone:         req.Phone,

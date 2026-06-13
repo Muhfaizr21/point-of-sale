@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '../services/apiClient'
 import { useAuth } from '../context/AuthContext'
 
-export function useCategories() {
+export function useCategories(branchId) {
   const { user } = useAuth()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
@@ -12,14 +12,14 @@ export function useCategories() {
     setLoading(true)
     setError(null)
     try {
-      const data = await apiClient.get('/api/categories')
+      const data = await apiClient.get(`/api/categories${branchId ? `?branch_id=${branchId}` : ''}`)
       setCategories(data || [])
     } catch (err) {
       setError(err.message || 'Gagal memuat kategori')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [branchId])
 
   useEffect(() => {
     if (user) {

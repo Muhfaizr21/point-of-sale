@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"point-of-sale/backend/app/middleware"
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/services"
 	"strconv"
@@ -18,13 +19,35 @@ func NewProductHandler(service services.ProductService) *ProductHandler {
 }
 
 func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	bidStr := r.URL.Query().Get("branch_id")
+	if bidStr != "" {
+		branchID, err := strconv.Atoi(bidStr)
+		if err != nil || branchID <= 0 {
+			models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "branch_id tidak valid", 400))
+			return
+		}
+		products, err := h.service.GetAllByBranch(r.Context(), uint(branchID))
+		if err != nil {
+			models.WriteError(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(products)
+		return
+	}
+
+	var branchID *uint
+	if user := middleware.GetUser(r); user != nil {
+		branchID = user.BranchID
+	}
+
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
 	category := strings.TrimSpace(r.URL.Query().Get("category"))
 
 	if page > 0 && limit > 0 {
-		products, total, err := h.service.GetAllProductsPaginated(r.Context(), page, limit, search, category)
+		products, total, err := h.service.GetAllProductsPaginated(r.Context(), page, limit, search, category, branchID)
 		if err != nil {
 			models.WriteError(w, err)
 			return
@@ -80,6 +103,12 @@ func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format input tidak valid", 400))
 		return
+	}
+
+	if req.BranchID == nil {
+		if user := middleware.GetUser(r); user != nil {
+			req.BranchID = user.BranchID
+		}
 	}
 
 	product, err := h.service.CreateProduct(r.Context(), &req)

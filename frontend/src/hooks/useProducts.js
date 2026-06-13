@@ -2,26 +2,27 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { apiClient } from '../services/apiClient'
 import { useAuth } from '../context/AuthContext'
 
-export function useProducts() {
+export function useProducts(branchId) {
   const { user } = useAuth()
   const [productsList, setProductsList] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
-	const [selectedCategory, setSelectedCategory] = useState('Semua')
+  const [selectedCategory, setSelectedCategory] = useState('Semua')
 
   const fetchProducts = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const data = await apiClient.get('/api/products')
+      const endpoint = branchId ? `/api/products?branch_id=${branchId}` : '/api/products'
+      const data = await apiClient.get(endpoint)
       setProductsList(data || [])
     } catch (err) {
       setError(err.message || 'Gagal memuat produk')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [branchId])
 
   useEffect(() => {
     if (user) {
@@ -89,23 +90,20 @@ export function useProducts() {
     }
   }
 
-  // Filtered products list based on search query and category
   const filteredProducts = useMemo(() => {
     return productsList.filter((product) => {
       const matchesSearch = product.name
         .toLowerCase()
         .includes(searchQuery.toLowerCase())
-      
       const matchesCategory =
         selectedCategory === 'Semua' || product.category === selectedCategory
-
       return matchesSearch && matchesCategory
     })
   }, [productsList, searchQuery, selectedCategory])
 
   return {
     products: filteredProducts,
-    allProducts: productsList, // Raw list for management page
+    allProducts: productsList,
     selectedCategory,
     setSelectedCategory,
     searchQuery,

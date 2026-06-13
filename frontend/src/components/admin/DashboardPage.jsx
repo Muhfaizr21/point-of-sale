@@ -133,7 +133,7 @@ const getDateRange = (period) => {
 // MAIN DASHBOARD COMPONENT
 // ============================================
 
-export function DashboardPage({ onToggleSidebar }) {
+export function DashboardPage({ onToggleSidebar, activeBranch = null }) {
   // State
   const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState('week')
@@ -168,17 +168,17 @@ export function DashboardPage({ onToggleSidebar }) {
     setLoading(true)
     try {
       const { dateFrom, dateTo } = getDateRange(dateRange)
-      const data = await orderService.getAnalytics({ dateFrom, dateTo })
+      const data = await orderService.getAnalytics({ dateFrom, dateTo, branchId: activeBranch })
       if (data) {
         setAnalyticsData(data)
       }
-      const ordersData = await orderService.getOrders({ limit: 5, sortBy: 'created_at', sortOrder: 'desc' })
+      const ordersData = await orderService.getOrders({ limit: 5, sortBy: 'created_at', sortOrder: 'desc', branchId: activeBranch })
       if (ordersData && ordersData.data) {
         setRecentOrders(ordersData.data)
       }
       
       // Fetch undelivered orders
-      const allOrders = await orderService.getOrders({ limit: 100, sortBy: 'created_at', sortOrder: 'desc' })
+      const allOrders = await orderService.getOrders({ limit: 100, sortBy: 'created_at', sortOrder: 'desc', branchId: activeBranch })
       if (allOrders && allOrders.data) {
         const undelivered = allOrders.data.filter(
           order => order.order_status === 'COMPLETED' || order.order_status === 'DIKEMAS'
@@ -193,7 +193,7 @@ export function DashboardPage({ onToggleSidebar }) {
     } finally {
       setLoading(false)
     }
-  }, [dateRange, fetchTargets])
+  }, [dateRange, fetchTargets, activeBranch])
 
   useEffect(() => {
     fetchData()
@@ -297,7 +297,8 @@ export function DashboardPage({ onToggleSidebar }) {
          items: itemsCount,
          total: order.total,
          method: order.payment_method,
-         status: order.payment_status
+         status: order.payment_status,
+         branch: order.branch
       }
     })
 
@@ -684,8 +685,14 @@ export function DashboardPage({ onToggleSidebar }) {
                           {order.order_status === 'COMPLETED' ? 'POS' : order.order_status}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-label-xs text-on-surface-variant mt-1">
+                      <div className="flex items-center gap-2 text-label-xs text-on-surface-variant mt-1 flex-wrap">
                         <span className="truncate max-w-[120px]" title={order.customer || 'Umum'}>{order.customer || 'Umum'} ({itemsCount} item)</span>
+                        {!activeBranch && order.branch && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-primary/5 text-primary rounded text-[9px] font-semibold whitespace-nowrap">
+                            <span className="material-symbols-outlined text-[9px]">store</span>
+                            {order.branch.name}
+                          </span>
+                        )}
                         <span>{new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                     </div>
@@ -833,6 +840,12 @@ export function DashboardPage({ onToggleSidebar }) {
                         {tx.items} item{tx.items > 1 ? 's' : ''}
                       </p>
                       <p className="text-label-xs text-on-surface-variant">{tx.time}</p>
+                      {!activeBranch && tx.branch && (
+                        <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-primary/5 text-primary rounded text-[10px] font-semibold">
+                          <span className="material-symbols-outlined text-[10px]">store</span>
+                          {tx.branch.name}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">

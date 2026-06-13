@@ -9,6 +9,8 @@ type Expense struct {
 	Amount      int       `gorm:"type:integer;not null" json:"amount"`
 	Category    string    `gorm:"type:varchar(100);index" json:"category"`
 	Notes       string    `gorm:"type:text" json:"notes"`
+	BranchID    *uint     `gorm:"index" json:"branch_id,omitempty"`
+	Branch      *Branch   `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -19,6 +21,7 @@ type CreateExpenseRequest struct {
 	Amount      int    `json:"amount"`
 	Category    string `json:"category"`
 	Notes       string `json:"notes"`
+	BranchID    *uint  `json:"-"`
 }
 
 type UpdateExpenseRequest struct {
@@ -30,14 +33,15 @@ type UpdateExpenseRequest struct {
 }
 
 type ExpenseQuery struct {
-	DateFrom string `json:"date_from"`
-	DateTo   string `json:"date_to"`
-	Category string `json:"category"`
-	Search   string `json:"search"`
-	Page     int    `json:"page"`
-	Limit    int    `json:"limit"`
-	SortBy   string `json:"sort_by"`
+	DateFrom  string `json:"date_from"`
+	DateTo    string `json:"date_to"`
+	Category  string `json:"category"`
+	Search    string `json:"search"`
+	Page      int    `json:"page"`
+	Limit     int    `json:"limit"`
+	SortBy    string `json:"sort_by"`
 	SortOrder string `json:"sort_order"`
+	BranchID  *uint  `json:"-"`
 }
 
 type ExpenseListResponse struct {

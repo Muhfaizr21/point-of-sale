@@ -56,7 +56,7 @@ const STATUS_OPTIONS = [
   { value: 'nonaktif', label: 'Nonaktif' },
 ]
 
-export function PromoPage({ onToggleSidebar }) {
+export function PromoPage({ onToggleSidebar, activeBranch = null }) {
   const [promos, setPromos] = useState([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -82,10 +82,10 @@ export function PromoPage({ onToggleSidebar }) {
 
   const fetchPromos = useCallback(async () => {
     setLoading(true)
-    try { const d = await apiClient.get('/api/promos'); setPromos(d || []) }
+    try { const d = await apiClient.get(`/api/promos${activeBranch ? `?branch_id=${activeBranch}` : ''}`); setPromos(d || []) }
     catch (err) { console.error(err) }
     finally { setLoading(false) }
-  }, [])
+  }, [activeBranch])
 
   useEffect(() => { fetchPromos() }, [fetchPromos])
   useEffect(() => { setPage(1) }, [searchQuery, statusFilter, typeFilter, sortField, sortDir])

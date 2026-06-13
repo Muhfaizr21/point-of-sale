@@ -14,7 +14,7 @@ type CustomerService interface {
 	Create(ctx context.Context, req *models.CreateCustomerRequest) (*models.Customer, error)
 	Update(ctx context.Context, id uint, req *models.UpdateCustomerRequest) (*models.Customer, error)
 	Delete(ctx context.Context, id uint) error
-	GetOrders(ctx context.Context, id uint) ([]models.Order, error)
+	GetOrders(ctx context.Context, id uint, branchID *uint) ([]models.Order, error)
 }
 
 type customerService struct {
@@ -80,6 +80,6 @@ func (s *customerService) Delete(ctx context.Context, id uint) error {
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *customerService) GetOrders(ctx context.Context, id uint) ([]models.Order, error) {
-	return s.orderRepo.GetByCustomerID(ctx, id)
+func (s *customerService) GetOrders(ctx context.Context, id uint, branchID *uint) ([]models.Order, error) {
+	return s.orderRepo.GetByCustomerID(ctx, id, branchID)
 }

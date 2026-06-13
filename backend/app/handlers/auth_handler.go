@@ -74,13 +74,14 @@ func (h *AuthHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 		Name     string `json:"name"`
 		Role     string `json:"role"`
+		BranchID *uint  `json:"branch_id,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format tidak valid", 400))
 		return
 	}
 
-	user, err := h.svc.CreateUser(r.Context(), req.Username, req.Password, req.Name, req.Role)
+	user, err := h.svc.CreateUser(r.Context(), req.Username, req.Password, req.Name, req.Role, req.BranchID)
 	if err != nil {
 		models.WriteError(w, err)
 		return
@@ -103,13 +104,14 @@ func (h *AuthHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password,omitempty"`
 		Name     string `json:"name"`
 		Role     string `json:"role"`
+		BranchID *uint  `json:"branch_id,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format tidak valid", 400))
 		return
 	}
 
-	user, err := h.svc.UpdateUser(r.Context(), uint(id), req.Username, req.Password, req.Name, req.Role)
+	user, err := h.svc.UpdateUser(r.Context(), uint(id), req.Username, req.Password, req.Name, req.Role, req.BranchID)
 	if err != nil {
 		models.WriteError(w, err)
 		return

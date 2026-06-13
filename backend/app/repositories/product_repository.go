@@ -9,7 +9,7 @@ import (
 
 type ProductRepository interface {
 	GetAll(ctx context.Context) ([]models.Product, error)
-	GetAllPaginated(ctx context.Context, page, limit int, search, category string) ([]models.Product, int64, error)
+	GetAllPaginated(ctx context.Context, page, limit int, search, category string, branchID *uint) ([]models.Product, int64, error)
 	GetByID(ctx context.Context, id uint) (*models.Product, error)
 	Create(ctx context.Context, product *models.Product) (*models.Product, error)
 	Update(ctx context.Context, product *models.Product) error
@@ -32,9 +32,12 @@ func (r *productRepository) GetAll(ctx context.Context) ([]models.Product, error
 	return products, err
 }
 
-func (r *productRepository) GetAllPaginated(ctx context.Context, page, limit int, search, category string) ([]models.Product, int64, error) {
+func (r *productRepository) GetAllPaginated(ctx context.Context, page, limit int, search, category string, branchID *uint) ([]models.Product, int64, error) {
 	var total int64
 	db := r.db.WithContext(ctx).Model(&models.Product{})
+	if branchID != nil {
+		db = db.Where("branch_id = ?", *branchID)
+	}
 	if search != "" {
 		db = db.Where("LOWER(name) LIKE ? OR LOWER(sku) LIKE ?", "%"+search+"%", "%"+search+"%")
 	}

@@ -46,17 +46,22 @@ func (r *expenseRepository) GetFiltered(ctx context.Context, query *models.Expen
 		db = db.Where("LOWER(description) LIKE ? OR LOWER(notes) LIKE ?", search, search)
 	}
 
+	if query.BranchID != nil {
+		db = db.Where("branch_id = ?", *query.BranchID)
+	}
+
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
+	allowedSortBy := map[string]bool{"date": true, "amount": true, "description": true, "category": true}
 	sortBy := "date"
-	if query.SortBy != "" {
+	if allowedSortBy[query.SortBy] {
 		sortBy = query.SortBy
 	}
 	sortOrder := "desc"
-	if query.SortOrder != "" {
-		sortOrder = query.SortOrder
+	if query.SortOrder == "asc" {
+		sortOrder = "asc"
 	}
 	db = db.Order(sortBy + " " + sortOrder).Order("id desc")
 
@@ -70,7 +75,7 @@ func (r *expenseRepository) GetFiltered(ctx context.Context, query *models.Expen
 	}
 	offset := (page - 1) * limit
 
-	err := db.Offset(offset).Limit(limit).Find(&list).Error
+	err := db.Preload("Branch").Offset(offset).Limit(limit).Find(&list).Error
 	return list, total, err
 }
 

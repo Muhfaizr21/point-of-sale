@@ -44,12 +44,15 @@ func (s *analyticsService) GetAnalytics(ctx context.Context, query *models.Analy
 
 	// Get all orders in date range
 	var orders []models.Order
-	err := s.db.WithContext(ctx).
+	dbQuery := s.db.WithContext(ctx).
+		Preload("Branch").
 		Preload("OrderItems").
 		Where("created_at >= ? AND created_at <= ?", dateFrom, dateTo.AddDate(0, 0, 1)).
-		Where("order_status IN ?", []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"}).
-		Order("created_at asc").
-		Find(&orders).Error
+		Where("order_status IN ?", []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"})
+	if query.BranchID != nil {
+		dbQuery = dbQuery.Where("branch_id = ?", *query.BranchID)
+	}
+	err := dbQuery.Order("created_at asc").Find(&orders).Error
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +226,7 @@ func (s *analyticsService) GetAnalytics(ctx context.Context, query *models.Analy
 	}
 
 	// Calculate real growth (compare with previous period of same length)
-	revenueGrowth := s.calculateRevenueGrowth(ctx, dateFrom, dateTo, totalRevenue)
+	revenueGrowth := s.calculateRevenueGrowth(ctx, dateFrom, dateTo, totalRevenue, query.BranchID)
 
 	return &models.AnalyticsResponse{
 		Summary: models.SummaryStats{
@@ -260,17 +263,20 @@ func (s *analyticsService) fillDailySalesRange(dateFrom, dateTo time.Time, daily
 	return result
 }
 
-func (s *analyticsService) calculateRevenueGrowth(ctx context.Context, dateFrom, dateTo time.Time, currentRevenue int) float64 {
+func (s *analyticsService) calculateRevenueGrowth(ctx context.Context, dateFrom, dateTo time.Time, currentRevenue int, branchID *uint) float64 {
 	periodDays := int(dateTo.Sub(dateFrom).Hours()/24) + 1
 	prevTo := dateFrom.AddDate(0, 0, -1)
 	prevFrom := dateFrom.AddDate(0, 0, -periodDays)
 
 	var prevRevenue int
-	s.db.WithContext(ctx).
+	dbQuery := s.db.WithContext(ctx).
 		Model(&models.Order{}).
 		Where("created_at >= ? AND created_at <= ?", prevFrom, prevTo.AddDate(0, 0, 1)).
-		Where("order_status IN ?", []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"}).
-		Select("COALESCE(SUM(total), 0)").
+		Where("order_status IN ?", []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"})
+	if branchID != nil {
+		dbQuery = dbQuery.Where("branch_id = ?", *branchID)
+	}
+	dbQuery.Select("COALESCE(SUM(total), 0)").
 		Scan(&prevRevenue)
 
 	if prevRevenue <= 0 {

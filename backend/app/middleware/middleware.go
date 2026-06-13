@@ -15,6 +15,7 @@ import (
 type contextKey string
 
 const UserContextKey contextKey = "user"
+const BranchContextKey contextKey = "branch_id"
 
 var allowedOrigins = map[string]bool{
 	"http://localhost:5173": true,
@@ -72,6 +73,13 @@ func Recovery(next http.Handler) http.Handler {
 func GetUser(r *http.Request) *models.User {
 	if user, ok := r.Context().Value(UserContextKey).(*models.User); ok {
 		return user
+	}
+	return nil
+}
+
+func GetBranchID(r *http.Request) *uint {
+	if branchID, ok := r.Context().Value(BranchContextKey).(uint); ok {
+		return &branchID
 	}
 	return nil
 }
@@ -136,7 +144,7 @@ func Authenticate(db *gorm.DB, skipPaths ...string) func(http.Handler) http.Hand
 			}
 
 			var user models.User
-			if err := db.Where("token = ?", token).First(&user).Error; err != nil {
+			if err := db.Preload("Branch").Where("token = ?", token).First(&user).Error; err != nil {
 				models.WriteError(w, models.NewAPIError(models.ErrUnauthorized, "Token tidak valid", 401))
 				return
 			}
@@ -150,6 +158,9 @@ func Authenticate(db *gorm.DB, skipPaths ...string) func(http.Handler) http.Hand
 			user.Password = ""
 			user.Token = ""
 			ctx := context.WithValue(r.Context(), UserContextKey, &user)
+			if user.BranchID != nil {
+				ctx = context.WithValue(ctx, BranchContextKey, *user.BranchID)
+			}
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

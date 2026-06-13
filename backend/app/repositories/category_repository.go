@@ -7,7 +7,7 @@ import (
 )
 
 type CategoryRepository interface {
-	GetAll(ctx context.Context) ([]models.Category, error)
+	GetAll(ctx context.Context, branchID *uint) ([]models.Category, error)
 	GetByID(ctx context.Context, id uint) (*models.Category, error)
 	Create(ctx context.Context, category *models.Category) error
 	Update(ctx context.Context, category *models.Category) error
@@ -22,9 +22,13 @@ func NewCategoryRepository(db *gorm.DB) CategoryRepository {
 	return &categoryRepository{db: db}
 }
 
-func (r *categoryRepository) GetAll(ctx context.Context) ([]models.Category, error) {
+func (r *categoryRepository) GetAll(ctx context.Context, branchID *uint) ([]models.Category, error) {
 	var categories []models.Category
-	err := r.db.WithContext(ctx).Order("id asc").Find(&categories).Error
+	db := r.db.WithContext(ctx)
+	if branchID != nil {
+		db = db.Where("branch_id = ?", *branchID)
+	}
+	err := db.Order("id asc").Find(&categories).Error
 	return categories, err
 }
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { apiClient, API_BASE_URL } from '../../services/apiClient'
 import { TopBar } from '../common/TopBar'
 
-export function BundlePage({ products, onToggleSidebar }) {
+export function BundlePage({ products, onToggleSidebar, activeBranch = null }) {
   const [bundles, setBundles] = useState([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -27,14 +27,14 @@ export function BundlePage({ products, onToggleSidebar }) {
   const fetchBundles = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await apiClient.get('/api/bundles')
+      const data = await apiClient.get(`/api/bundles${activeBranch ? `?branch_id=${activeBranch}` : ''}`)
       setBundles(data || [])
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [activeBranch])
 
   useEffect(() => { fetchBundles() }, [fetchBundles])
   useEffect(() => { setPage(1) }, [searchQuery, statusFilter, sortField, sortDir])

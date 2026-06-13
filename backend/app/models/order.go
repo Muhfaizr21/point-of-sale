@@ -25,6 +25,8 @@ var ValidStatusTransitions = map[string][]string{
 type Order struct {
 	ID             uint            `gorm:"primaryKey;autoIncrement" json:"id"`
 	InvoiceNumber  string          `gorm:"type:varchar(100);uniqueIndex;not null" json:"invoice_number"`
+	BranchID       *uint           `gorm:"index" json:"branch_id,omitempty"`
+	Branch         *Branch         `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
 	CustomerID     *uint           `json:"customer_id,omitempty"`
 	Customer       string          `gorm:"type:varchar(255);default:'Umum'" json:"customer"`
 	Cashier        string          `gorm:"type:varchar(100);default:'Kasir'" json:"cashier"`
@@ -73,6 +75,7 @@ type SplitPaymentRequest struct {
 }
 
 type CreateOrderRequest struct {
+	BranchID          *uint                 `json:"branch_id,omitempty"`
 	PaymentMethod     string                `json:"payment_method"`
 	SplitPayments     []SplitPaymentRequest `json:"split_payments,omitempty"`
 	Items             []CreateOrderItemRequest `json:"items"`
@@ -106,6 +109,7 @@ type OrderQuery struct {
 	Status       string `json:"status"`
 	SortBy       string `json:"sort_by"`
 	SortOrder    string `json:"sort_order"`
+	BranchID     *uint  `json:"-"`
 }
 
 // Paginated response
@@ -125,6 +129,7 @@ type Pagination struct {
 type AnalyticsQuery struct {
 	DateFrom string `json:"date_from"`
 	DateTo   string `json:"date_to"`
+	BranchID *uint  `json:"branch_id,omitempty"`
 }
 
 type DailySales struct {
