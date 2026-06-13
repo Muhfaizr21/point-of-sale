@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Kontak Kami - SentraKas POS</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet">
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#adc8f5",
+                        "tertiary-container": "#31394e",
+                        "tertiary": "#1c2337",
+                        "tertiary-fixed": "#dae2fd",
+                        "outline-variant": "#c4c6cf",
+                        "inverse-surface": "#2d3133",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#88d982",
+                        "surface-variant": "#e0e3e5",
+                        "secondary-container": "#a0f399",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#455f87",
+                        "on-surface": "#191c1e",
+                        "primary-container": "#1e3a5f",
+                        "on-primary-fixed-variant": "#2d486d",
+                        "primary-fixed": "#d5e3ff",
+                        "on-tertiary-fixed": "#131b2e",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#74777f",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-surface-variant": "#43474e",
+                        "primary": "#022448",
+                        "on-secondary-container": "#217128",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#9ba3bb",
+                        "on-secondary-fixed": "#002204",
+                        "inverse-primary": "#adc8f5",
+                        "surface": "#f7f9fb",
+                        "on-primary-fixed": "#001c3b",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "on-primary-container": "#8aa4cf",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-dim": "#d8dadc",
+                        "secondary": "#1b6d24",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-container": "#eceef0",
+                        "surface-container-high": "#e6e8ea",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#191c1e",
+                        "secondary-fixed": "#a3f69c",
+                        "on-secondary-fixed-variant": "#005312",
+                        "background": "#f7f9fb",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f7f9fb",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "1.5rem",
+                        "md": "1.5rem",
+                        "sm": "1rem",
+                        "xs": "0.5rem",
+                        "margin-desktop": "2.5rem",
+                        "xl": "3rem",
+                        "base": "4px",
+                        "lg": "2rem",
+                        "margin-mobile": "1rem"
+                    },
+                    "fontFamily": {
+                        "title-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "title-lg": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+            color: #191c1e;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 12px rgba(30, 58, 95, 0.05);
+        }
+
+        .input-focus-glow:focus {
+            outline: none;
+            border-color: #022448;
+            box-shadow: 0 0 0 2px rgba(2, 36, 72, 0.2);
+        }
+    </style>
+</head>
+
+<body class="bg-background text-on-background min-h-screen flex flex-col">
+    <!-- TopNavBar -->
+    <header
+        class="bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-md sticky top-0 z-50 border-b border-outline-variant/30 shadow-sm w-full">
+        <div
+            class="flex justify-between items-center h-[72px] px-margin-mobile md:px-margin-desktop max-w-[1440px] mx-auto w-full">
+            <div class="flex items-center gap-2"><img
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJ9VA8RPJkwF_UzDcQqepwjYLZzZkS4RqRi1gjH6H74_Vkj5bSah2DGBuM7N7bw4U8Up8eAZDq0Uf-hKHZ31I8fKpVp4GMMl-jJ_-lhitpNBLATxu79s44VwYS0V6NlSxRWvdB7lkqvWQ7Y5fZMcSV9AvfSvBgvNa4mI32zCYhCURe5kEbOXr8pspihx16qgm0VFQJyvow7lLnDGnp6eXOOcXPMgQ_mXbHhVyg9IlYXAqr1O-YxmbCXjjMLktPbIom7VC8rHbXqQ"
+                    alt="SentraKas Logo" class="h-8 w-auto object-contain"></div>
+            <nav class="hidden md:flex items-center gap-md font-body-md text-body-md">
+                <a class="text-on-surface-variant dark:text-on-tertiary-container hover:text-secondary dark:hover:text-secondary-fixed transition-colors duration-200 cursor-pointer active:opacity-80"
+                    href="#">Features</a>
+                <a class="text-on-surface-variant dark:text-on-tertiary-container hover:text-secondary dark:hover:text-secondary-fixed transition-colors duration-200 cursor-pointer active:opacity-80"
+                    href="#">Pricing</a>
+                <a class="text-primary dark:text-primary-fixed-dim font-bold border-b-2 border-secondary pb-1 hover:text-secondary transition-colors duration-200 cursor-pointer active:opacity-80"
+                    href="#">Contact</a>
+            </nav>
+            <div class="flex items-center gap-sm">
+                <button
+                    class="hidden md:inline-flex items-center justify-center bg-primary text-on-primary hover:bg-primary/90 px-4 py-2 rounded-xl font-label-md text-label-md transition-colors duration-200">
+                    Get Started
+                </button>
+                <button class="md:hidden text-primary p-2">
+                    <span class="material-symbols-outlined" data-icon="menu">menu</span>
+                </button>
+            </div>
+        </div>
+    </header>
+    <!-- Main Content Canvas -->
+    <main class="flex-grow w-full max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop py-xl">
+        <!-- Header Section -->
+        <div class="text-center mb-12 md:mb-16 max-w-3xl mx-auto">
+            <h1 class="font-display-lg text-display-lg text-primary mb-4">Hubungi Kami</h1>
+            <p class="font-body-lg text-body-lg text-on-surface-variant">
+                Tim dukungan SentraKas siap membantu Anda. Silakan isi formulir di bawah ini atau gunakan informasi
+                kontak yang tersedia untuk terhubung dengan kami.
+            </p>
+        </div>
+        <!-- Bento Grid Layout -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8 items-start">
+            <!-- Contact Form Area (Takes more space on desktop) -->
+            <div class="md:col-span-7 lg:col-span-8 glass-card rounded-xl p-6 md:p-8">
+                <h2 class="font-headline-md text-headline-md text-primary mb-6">Kirim Pesan</h2>
+                <form action="#" class="space-y-6" method="POST">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block font-label-md text-label-md text-on-surface mb-2" for="name">Nama
+                                Lengkap</label>
+                            <input
+                                class="w-full bg-surface-container-lowest border border-surface-variant rounded-xl px-4 py-3 text-body-md input-focus-glow transition-all duration-200"
+                                id="name" name="name" placeholder="Masukkan nama Anda" required="" type="text">
+                        </div>
+                        <div>
+                            <label class="block font-label-md text-label-md text-on-surface mb-2" for="email">Alamat
+                                Email</label>
+                            <input
+                                class="w-full bg-surface-container-lowest border border-surface-variant rounded-xl px-4 py-3 text-body-md input-focus-glow transition-all duration-200"
+                                id="email" name="email" placeholder="nama@perusahaan.com" required="" type="email">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-label-md text-label-md text-on-surface mb-2"
+                            for="subject">Subjek</label>
+                        <select
+                            class="w-full bg-surface-container-lowest border border-surface-variant rounded-xl px-4 py-3 text-body-md input-focus-glow transition-all duration-200"
+                            id="subject" name="subject">
+                            <option value="support">Dukungan Teknis</option>
+                            <option value="sales">Pertanyaan Penjualan</option>
+                            <option value="billing">Tagihan &amp; Pembayaran</option>
+                            <option value="other">Lainnya</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-label-md text-label-md text-on-surface mb-2"
+                            for="message">Pesan</label>
+                        <textarea
+                            class="w-full bg-surface-container-lowest border border-surface-variant rounded-xl px-4 py-3 text-body-md input-focus-glow transition-all duration-200 resize-none"
+                            id="message" name="message" placeholder="Jelaskan kebutuhan atau pertanyaan Anda..."
+                            required="" rows="5"></textarea>
+                    </div>
+                    <div class="pt-2">
+                        <button
+                            class="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-secondary text-on-secondary hover:bg-secondary/90 px-6 py-3 rounded-xl font-label-md text-label-md transition-all duration-200 shadow-[0_4px_12px_rgba(27,109,36,0.2)] hover:shadow-[0_6px_16px_rgba(27,109,36,0.3)]"
+                            type="submit">
+                            <span class="material-symbols-outlined" data-icon="send">send</span>
+                            Kirim Pesan
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <!-- Contact Info Area (Sidebar) -->
+            <div class="md:col-span-5 lg:col-span-4 space-y-6">
+                <!-- Info Card -->
+                <div class="glass-card rounded-xl p-6">
+                    <h3 class="font-title-lg text-title-lg text-primary mb-6">Informasi Kontak</h3>
+                    <div class="space-y-6">
+                        <div class="flex items-start gap-4">
+                            <div class="bg-primary-fixed text-primary-container p-3 rounded-full flex-shrink-0">
+                                <span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+                            </div>
+                            <div>
+                                <h4 class="font-label-md text-label-md text-on-surface font-semibold mb-1">Kantor Pusat
+                                </h4>
+                                <p class="font-body-md text-body-md text-on-surface-variant">Gedung Sentra Utama, Lt.
+                                    15<br>Jl. Jend. Sudirman Kav. 21<br>Jakarta Selatan 12920</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-4">
+                            <div class="bg-secondary-fixed text-secondary-container p-3 rounded-full flex-shrink-0"
+                                style="color: #005312;">
+                                <span class="material-symbols-outlined" data-icon="chat">chat</span>
+                            </div>
+                            <div>
+                                <h4 class="font-label-md text-label-md text-on-surface font-semibold mb-1">WhatsApp
+                                    Support</h4>
+                                <a class="font-body-md text-body-md text-secondary hover:underline" href="#">+62
+                                    811-9999-8888</a>
+                                <p class="text-sm text-outline mt-1">Senin - Jumat, 09:00 - 18:00</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-4">
+                            <div class="bg-primary-fixed text-primary-container p-3 rounded-full flex-shrink-0">
+                                <span class="material-symbols-outlined" data-icon="mail">mail</span>
+                            </div>
+                            <div>
+                                <h4 class="font-label-md text-label-md text-on-surface font-semibold mb-1">Email</h4>
+                                <a class="font-body-md text-body-md text-primary hover:underline"
+                                    href="mailto:support@sentrakas.co.id">support@sentrakas.co.id</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Map Card -->
+                <div class="glass-card rounded-xl overflow-hidden h-64 relative group cursor-pointer">
+                    <img alt="Peta Lokasi" class="w-full h-full object-cover"
+                        data-alt="A stylized, clean map visualization of Jakarta business district. The map features a modern, minimal aesthetic with light gray and subtle blue tones, perfectly matching a corporate tech brand. A single, distinct navy blue pin marks a central location. The lighting is bright and clear, conveying a sense of transparency and ease of access."
+                        data-location="Jakarta"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVAbSxcacw55qkjHvd4TOAHhgI-AIdP7Utb0kF_vOvWXqayq1ehxS1h7PuZluLWVn7r7TWIh-i-VoNPhmrLV2999p6ajsOqNXpUHt67jJP4m_k49H4gYPP8AF4Ec2ZvmKTZFC1Ixp-YKm0t5oUs6c7O1javRpX4w6BvHvc0KBWt19Dq3NwBEDnEnIanmZxoATHNhz4RHaM6f_tjUXwTYbe0AtJxrpjHa8E6UaROaCVt-6GQJUgy6m8fybB3-qpG_TzuF9BF5OGBw">
+                    <div
+                        class="absolute inset-0 bg-primary/10 group-hover:bg-primary/20 transition-colors duration-300">
+                    </div>
+                    <div
+                        class="absolute bottom-4 left-4 right-4 bg-surface/90 backdrop-blur-sm p-3 rounded-lg flex items-center justify-between shadow-sm">
+                        <span class="font-label-md text-label-md text-primary font-semibold">Lihat di Google Maps</span>
+                        <span class="material-symbols-outlined text-primary" data-icon="open_in_new">open_in_new</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <!-- Footer -->
+    <footer
+        class="bg-tertiary dark:bg-inverse-surface w-full py-xl px-margin-mobile md:px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-md font-body-md text-body-md text-on-tertiary dark:text-inverse-on-surface mt-auto">
+        <div class="flex items-center"><img
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxOoaoqiWyqnDjq4lagaKXYUyR93bvZ1cEph44Y7I-orR2z8sFTGa54GXBxc1xXKbNmpVhT0vCfOum7TjiJv6iLvsBlRsahTCbIROM-UV0Le8nrUiAPkUY-E6kqZjhS6bwHf557h8mir4rcr7Ro3btscJAvUNGo2FAaFAPTkUQZPFb45mKwZuMp4QHmiHBs_p7ii1MDTJUISDtnI__9DwiEU6Iuwicx_OIlsgp3kGSu019IMzOMML47W_FlkclsA1xfEaqf8WM9A"
+                alt="SentraKas Logo" class="h-10 w-auto object-contain brightness-0 invert"></div>
+        <div class="text-center md:text-left text-on-tertiary-fixed-variant">
+            © 2024 SentraKas. High-performance POS for growing businesses.
+        </div>
+        <div class="flex flex-wrap justify-center gap-md">
+            <a class="text-on-tertiary-fixed-variant hover:text-on-tertiary transition-colors" href="#">Privacy
+                Policy</a>
+            <a class="text-on-tertiary-fixed-variant hover:text-on-tertiary transition-colors" href="#">Terms of
+                Service</a>
+            <a class="text-on-tertiary-fixed-variant hover:text-on-tertiary transition-colors" href="#">Help Center</a>
+            <a class="text-on-tertiary-fixed-variant hover:text-on-tertiary transition-colors" href="#">API Docs</a>
+        </div>
+    </footer>
+
+
+</body>
+
+</html>

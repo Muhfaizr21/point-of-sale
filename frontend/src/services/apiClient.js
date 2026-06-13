@@ -1,11 +1,15 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
 
+const initialToken = localStorage.getItem('token');
+
 export const apiClient = {
   baseURL: API_BASE_URL,
+  defaultHeaders: initialToken ? { 'Authorization': `Bearer ${initialToken}` } : {},
   async request(method, endpoint, data = null) {
     const headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      ...apiClient.defaultHeaders,
     };
 
     const options = {
@@ -41,7 +45,10 @@ export const apiClient = {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error(`API Client Error [${method} ${endpoint}]:`, error);
+      console.error(`API Client Error [${method} ${endpoint}]:`, error, error.message);
+      if (error.name === 'TypeError') {
+         console.error('This looks like a CORS or network error in Safari');
+      }
       throw error;
     }
   },
@@ -57,6 +64,9 @@ export const apiClient = {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
+        headers: {
+          ...apiClient.defaultHeaders,
+        },
         body: formData,
       });
 

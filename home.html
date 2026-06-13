@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>SentraKas POS - Kelola Toko Lebih Mudah</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Material Symbols -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet">
+    <!-- Tailwind Config -->
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#a0f399",
+                        "on-secondary-fixed": "#002204",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "surface-variant": "#e0e3e5",
+                        "surface-bright": "#f7f9fb",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed": "#a3f69c",
+                        "inverse-on-surface": "#eff1f3",
+                        "primary-fixed": "#d5e3ff",
+                        "secondary": "#1b6d24",
+                        "on-surface": "#191c1e",
+                        "on-tertiary-fixed": "#131b2e",
+                        "surface-container-highest": "#e0e3e5",
+                        "outline-variant": "#c4c6cf",
+                        "background": "#f7f9fb",
+                        "on-surface-variant": "#43474e",
+                        "primary-container": "#1e3a5f",
+                        "on-primary-fixed-variant": "#2d486d",
+                        "on-background": "#191c1e",
+                        "secondary-fixed-dim": "#88d982",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f2f4f6",
+                        "outline": "#74777f",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#e6e8ea",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "on-primary-container": "#8aa4cf",
+                        "surface-container": "#eceef0",
+                        "on-primary-fixed": "#001c3b",
+                        "on-secondary-fixed-variant": "#005312",
+                        "tertiary-fixed": "#dae2fd",
+                        "error": "#ba1a1a",
+                        "tertiary-container": "#31394e",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#adc8f5",
+                        "primary": "#022448",
+                        "surface-tint": "#455f87",
+                        "surface-dim": "#d8dadc",
+                        "primary-fixed-dim": "#adc8f5",
+                        "on-secondary-container": "#217128",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-container": "#9ba3bb",
+                        "tertiary": "#1c2337",
+                        "surface": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xl": "3rem",
+                        "gutter": "1.5rem",
+                        "margin-desktop": "2.5rem",
+                        "xs": "0.5rem",
+                        "margin-mobile": "1rem",
+                        "lg": "2rem",
+                        "base": "4px",
+                        "md": "1.5rem",
+                        "sm": "1rem"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "title-lg": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "title-lg": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+    </style>
+</head>
+
+<body class="antialiased">
+    <!-- TopNavBar -->
+    <nav
+        class="bg-surface/80 dark:bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 shadow-sm fixed top-0 w-full z-50 flex justify-between items-center h-[72px] px-margin-desktop max-w-[1440px] mx-auto hidden md:flex">
+        <div class="flex items-center gap-md">
+            <img alt="SentraKas Logo" class="h-8"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxOoaoqiWyqnDjq4lagaKXYUyR93bvZ1cEph44Y7I-orR2z8sFTGa54GXBxc1xXKbNmpVhT0vCfOum7TjiJv6iLvsBlRsahTCbIROM-UV0Le8nrUiAPkUY-E6kqZjhS6bwHf557h8mir4rcr7Ro3btscJAvUNGo2FAaFAPTkUQZPFb45mKwZuMp4QHmiHBs_p7ii1MDTJUISDtnI__9DwiEU6Iuwicx_OIlsgp3kGSu019IMzOMML47W_FlkclsA1xfEaqf8WM9A">
+        </div>
+        <div class="flex items-center gap-lg">
+            <a class="text-primary dark:text-primary-fixed-dim font-semibold border-b-2 border-primary dark:border-primary-fixed-dim pb-1 text-label-md font-label-md active"
+                href="#beranda">Beranda</a>
+            <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors text-label-md font-label-md hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-all duration-200 px-2 py-1 rounded"
+                href="#fitur">Fitur</a>
+            <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors text-label-md font-label-md hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-all duration-200 px-2 py-1 rounded"
+                href="#harga">Harga</a>
+            <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors text-label-md font-label-md hover:bg-surface-container-low dark:hover:bg-surface-container-highest transition-all duration-200 px-2 py-1 rounded"
+                href="#kontak">Kontak</a>
+        </div>
+        <div>
+            <a class="inline-flex items-center justify-center px-4 py-2 bg-primary text-on-primary rounded-xl font-label-md text-label-md hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm active:scale-95 duration-150"
+                href="#">Login</a>
+        </div>
+    </nav>
+    <!-- Mobile Nav Placeholder (Suppressed as per rules, using full nav cluster for this landing page view) -->
+    <main class="pt-[72px] md:pt-[100px] px-margin-mobile md:px-margin-desktop max-w-[1440px] mx-auto">
+        <!-- Hero Section -->
+        <section class="py-xl flex flex-col md:flex-row items-center gap-xl min-h-[80vh]" id="beranda">
+            <div class="flex-1 space-y-md">
+                <h1
+                    class="text-display-lg font-display-lg text-primary md:text-display-lg text-headline-lg-mobile font-headline-lg-mobile md:font-display-lg leading-tight">
+                    Kelola Toko Lebih Mudah dengan SentraKas
+                </h1>
+                <p class="text-body-lg font-body-lg text-on-surface-variant max-w-2xl">
+                    Satu aplikasi kasir untuk semua kebutuhan bisnis Anda. Pantau penjualan, stok, dan pelanggan dalam
+                    satu platform yang intuitif.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-sm pt-sm">
+                    <a class="inline-flex items-center justify-center px-6 py-3 bg-secondary text-on-secondary rounded-xl font-label-md text-label-md hover:bg-[#155a1d] transition-colors shadow-sm active:scale-95 duration-150"
+                        href="#">
+                        Coba Gratis 14 Hari
+                    </a>
+                    <a class="inline-flex items-center justify-center px-6 py-3 border border-outline text-primary rounded-xl font-label-md text-label-md hover:bg-surface-container-low transition-colors shadow-sm active:scale-95 duration-150"
+                        href="#">
+                        Lihat Demo
+                    </a>
+                </div>
+            </div>
+            <div class="flex-1 w-full relative">
+                <div class="absolute inset-0 bg-primary/5 rounded-3xl transform rotate-3 scale-105 -z-10"></div>
+                <img alt="SentraKas Dashboard Illustration"
+                    class="w-full h-auto rounded-xl shadow-lg border border-surface-variant object-cover aspect-video"
+                    data-alt="A sleek, modern point-of-sale dashboard interface displayed on an iPad or tablet device. The interface shows dynamic charts, daily sales figures, and a product grid with clean, minimalist iconography. The overall color scheme is navy blue and white, with subtle depth and clean lines, reflecting a high-performance, professional business tool in a well-lit, contemporary office setting."
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCY72UNA3upFGvjroGthmepqUjr3L59kfx4u7LSBALfQDPSAmfMGqzJSpTBu9NpZquGm_spk3CdrJaUj9ghixQe8gU22n_EYrKvAsLM-k9EmCKRkIu5R2bSwS_SzLIOgax6Qvb_dYOTRgRhkO1F9Z-omOz3EW2spE_39UVplZ-1SkdJkXgroG1wgo6iYXzLkX-io_wde-OYujfApbvRYbJzACS3z1I3VaQEz1bqXdlXN-DyD8AGotNFesy6eHgjhAk4f5R7u7EtOA">
+            </div>
+        </section>
+        <!-- Fitur Utama -->
+        <section class="py-xl" id="fitur">
+            <div class="text-center mb-lg space-y-xs">
+                <h2
+                    class="text-headline-lg font-headline-lg text-primary md:text-headline-lg text-headline-lg-mobile font-headline-lg-mobile">
+                    Fitur Unggulan</h2>
+                <p class="text-body-md font-body-md text-on-surface-variant">Solusi lengkap untuk mempercepat
+                    operasional bisnis Anda.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-lg">
+                <!-- Feature 1 -->
+                <div
+                    class="bg-surface-container-lowest p-lg rounded-xl border border-surface-variant hover:shadow-[0px_4px_12px_rgba(30,58,95,0.08)] transition-all duration-200 group">
+                    <div
+                        class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-md group-hover:bg-primary/20 transition-colors">
+                        <span class="material-symbols-outlined text-primary"
+                            data-icon="shopping_cart">shopping_cart</span>
+                    </div>
+                    <h3 class="text-title-lg font-title-lg text-primary mb-xs">Kasir Cepat &amp; Intuitif</h3>
+                    <p class="text-body-md font-body-md text-on-surface-variant">Transaksi jadi lebih kilat dengan
+                        antarmuka yang mudah dipelajari.</p>
+                </div>
+                <!-- Feature 2 -->
+                <div
+                    class="bg-surface-container-lowest p-lg rounded-xl border border-surface-variant hover:shadow-[0px_4px_12px_rgba(30,58,95,0.08)] transition-all duration-200 group">
+                    <div
+                        class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-md group-hover:bg-primary/20 transition-colors">
+                        <span class="material-symbols-outlined text-primary" data-icon="show_chart">show_chart</span>
+                    </div>
+                    <h3 class="text-title-lg font-title-lg text-primary mb-xs">Laporan Real-time</h3>
+                    <p class="text-body-md font-body-md text-on-surface-variant">Akses data penjualan Anda kapan saja,
+                        di mana saja secara akurat.</p>
+                </div>
+                <!-- Feature 3 -->
+                <div
+                    class="bg-surface-container-lowest p-lg rounded-xl border border-surface-variant hover:shadow-[0px_4px_12px_rgba(30,58,95,0.08)] transition-all duration-200 group">
+                    <div
+                        class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-md group-hover:bg-primary/20 transition-colors">
+                        <span class="material-symbols-outlined text-primary" data-icon="group">group</span>
+                    </div>
+                    <h3 class="text-title-lg font-title-lg text-primary mb-xs">Manajemen Stok &amp; Pelanggan</h3>
+                    <p class="text-body-md font-body-md text-on-surface-variant">Kelola inventaris otomatis dan bangun
+                        loyalitas pelanggan.</p>
+                </div>
+            </div>
+        </section>
+        <!-- Harga -->
+        <section class="py-xl bg-surface-container-low rounded-3xl px-lg mb-xl" id="harga">
+            <div class="text-center mb-lg space-y-xs">
+                <h2
+                    class="text-headline-lg font-headline-lg text-primary md:text-headline-lg text-headline-lg-mobile font-headline-lg-mobile">
+                    Pilihan Harga Sederhana</h2>
+                <p class="text-body-md font-body-md text-on-surface-variant">Pilih paket yang sesuai dengan ukuran
+                    bisnis Anda.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-lg max-w-4xl mx-auto">
+                <!-- Basic Plan -->
+                <div
+                    class="bg-surface-container-lowest p-lg rounded-xl border border-surface-variant shadow-sm flex flex-col h-full">
+                    <div class="mb-md">
+                        <h3 class="text-title-lg font-title-lg text-primary mb-xs">Basic</h3>
+                        <p class="text-headline-md font-headline-md text-on-surface mb-xs">Rp 150.000<span
+                                class="text-body-md font-body-md text-on-surface-variant font-normal">/bln</span></p>
+                        <p class="text-body-md font-body-md text-on-surface-variant">Cocok untuk UMKM.</p>
+                    </div>
+                    <ul class="space-y-sm mb-lg flex-1">
+                        <li class="flex items-start gap-xs text-body-md font-body-md text-on-surface-variant">
+                            <span class="material-symbols-outlined text-secondary"
+                                data-icon="check_circle">check_circle</span>
+                            Kasir Online
+                        </li>
+                        <li class="flex items-start gap-xs text-body-md font-body-md text-on-surface-variant">
+                            <span class="material-symbols-outlined text-secondary"
+                                data-icon="check_circle">check_circle</span>
+                            Laporan Standar
+                        </li>
+                        <li class="flex items-start gap-xs text-body-md font-body-md text-on-surface-variant">
+                            <span class="material-symbols-outlined text-secondary"
+                                data-icon="check_circle">check_circle</span>
+                            1 Outlet
+                        </li>
+                    </ul>
+                    <a class="block w-full text-center px-4 py-3 border border-primary text-primary rounded-xl font-label-md text-label-md hover:bg-primary/5 transition-colors"
+                        href="#">
+                        Pilih Basic
+                    </a>
+                </div>
+                <!-- Pro Plan -->
+                <div
+                    class="bg-surface-container-lowest p-lg rounded-xl border-t-4 border-t-secondary shadow-[0px_10px_25px_rgba(0,0,0,0.1)] flex flex-col h-full relative">
+                    <div class="absolute top-0 right-0 transform translate-x-2 -translate-y-1/2">
+                        <span
+                            class="bg-secondary text-on-secondary text-label-sm font-label-sm px-3 py-1 rounded-full shadow-sm">Rekomendasi</span>
+                    </div>
+                    <div class="mb-md">
+                        <h3 class="text-title-lg font-title-lg text-primary mb-xs">Pro</h3>
+                        <p class="text-headline-md font-headline-md text-on-surface mb-xs">Rp 350.000<span
+                                class="text-body-md font-body-md text-on-surface-variant font-normal">/bln</span></p>
+                        <p class="text-body-md font-body-md text-on-surface-variant">Untuk bisnis yang berkembang.</p>
+                    </div>
+                    <ul class="space-y-sm mb-lg flex-1">
+                        <li class="flex items-start gap-xs text-body-md font-body-md text-on-surface-variant">
+                            <span class="material-symbols-outlined text-secondary"
+                                data-icon="check_circle">check_circle</span>
+                            Semua di Basic
+                        </li>
+                        <li class="flex items-start gap-xs text-body-md font-body-md text-on-surface-variant">
+                            <span class="material-symbols-outlined text-secondary"
+                                data-icon="check_circle">check_circle</span>
+                            Manajemen Stok
+                        </li>
+                        <li class="flex items-start gap-xs text-body-md font-body-md text-on-surface-variant">
+                            <span class="material-symbols-outlined text-secondary"
+                                data-icon="check_circle">check_circle</span>
+                            Multi-Outlet
+                        </li>
+                        <li class="flex items-start gap-xs text-body-md font-body-md text-on-surface-variant">
+                            <span class="material-symbols-outlined text-secondary"
+                                data-icon="check_circle">check_circle</span>
+                            Integrasi Pembayaran
+                        </li>
+                    </ul>
+                    <a class="block w-full text-center px-4 py-3 bg-secondary text-on-secondary rounded-xl font-label-md text-label-md hover:bg-[#155a1d] hover:shadow-[0px_4px_12px_rgba(27,109,36,0.3)] transition-all"
+                        href="#">
+                        Pilih Pro
+                    </a>
+                </div>
+            </div>
+        </section>
+        <!-- Testimonial -->
+        <section class="py-xl mb-xl">
+            <div class="text-center mb-lg space-y-xs">
+                <h2
+                    class="text-headline-lg font-headline-lg text-primary md:text-headline-lg text-headline-lg-mobile font-headline-lg-mobile">
+                    Apa Kata Mereka</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-lg max-w-4xl mx-auto">
+                <!-- Testimonial 1 -->
+                <div class="bg-surface-container-lowest p-lg rounded-xl border border-surface-variant shadow-sm">
+                    <div class="flex gap-1 mb-sm text-secondary">
+                        <span class="material-symbols-outlined" data-icon="star" data-weight="fill"
+                            style="font-variation-settings: 'FILL' 1;">star</span>
+                        <span class="material-symbols-outlined" data-icon="star" data-weight="fill"
+                            style="font-variation-settings: 'FILL' 1;">star</span>
+                        <span class="material-symbols-outlined" data-icon="star" data-weight="fill"
+                            style="font-variation-settings: 'FILL' 1;">star</span>
+                        <span class="material-symbols-outlined" data-icon="star" data-weight="fill"
+                            style="font-variation-settings: 'FILL' 1;">star</span>
+                        <span class="material-symbols-outlined" data-icon="star" data-weight="fill"
+                            style="font-variation-settings: 'FILL' 1;">star</span>
+                    </div>
+                    <p class="text-body-md font-body-md text-on-surface italic mb-md">"SentraKas sangat membantu
+                        efisiensi operasional kafe saya. Laporannya sangat detail!"</p>
+                    <div class="flex items-center gap-sm">
+                        <div
+                            class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">
+                            A</div>
+                        <div>
+                            <p class="text-label-md font-label-md text-primary font-bold">Andi</p>
+                            <p class="text-label-sm font-label-sm text-on-surface-variant">Pemilik Kopi Hits</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Testimonial 2 -->
+                <div class="bg-surface-container-lowest p-lg rounded-xl border border-surface-variant shadow-sm">
+                    <div class="flex gap-1 mb-sm text-secondary">
+                        <span class="material-symbols-outlined" data-icon="star" data-weight="fill"
+                            style="font-variation-settings: 'FILL' 1;">star</span>
+                        <span class="material-symbols-outlined" data-icon="star" data-weight="fill"
+                            style="font-variation-settings: 'FILL' 1;">star</span>
+                        <span class="material-symbols-outlined" data-icon="star" data-weight="fill"
+                            style="font-variation-settings: 'FILL' 1;">star</span>
+                        <span class="material-symbols-outlined" data-icon="star" data-weight="fill"
+                            style="font-variation-settings: 'FILL' 1;">star</span>
+                        <span class="material-symbols-outlined" data-icon="star" data-weight="fill"
+                            style="font-variation-settings: 'FILL' 1;">star</span>
+                    </div>
+                    <p class="text-body-md font-body-md text-on-surface italic mb-md">"Fitur manajemen stoknya juara.
+                        Tidak perlu lagi cek gudang manual setiap hari."</p>
+                    <div class="flex items-center gap-sm">
+                        <div
+                            class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">
+                            M</div>
+                        <div>
+                            <p class="text-label-md font-label-md text-primary font-bold">Maya</p>
+                            <p class="text-label-sm font-label-sm text-on-surface-variant">Toko Sembako Berkah</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <!-- Footer -->
+    <footer
+        class="bg-surface-container-lowest dark:bg-inverse-surface w-full py-xl px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-md border-t border-outline-variant/20 max-w-[1440px] mx-auto">
+        <div class="flex flex-col items-center md:items-start gap-sm">
+            <img alt="SentraKas Logo" class="opacity-80 h-8"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxOoaoqiWyqnDjq4lagaKXYUyR93bvZ1cEph44Y7I-orR2z8sFTGa54GXBxc1xXKbNmpVhT0vCfOum7TjiJv6iLvsBlRsahTCbIROM-UV0Le8nrUiAPkUY-E6kqZjhS6bwHf557h8mir4rcr7Ro3btscJAvUNGo2FAaFAPTkUQZPFb45mKwZuMp4QHmiHBs_p7ii1MDTJUISDtnI__9DwiEU6Iuwicx_OIlsgp3kGSu019IMzOMML47W_FlkclsA1xfEaqf8WM9A">
+            <p class="text-body-md font-body-md text-on-surface-variant dark:text-on-surface-variant">© 2024 SentraKas
+                POS. Seluruh hak cipta dilindungi.</p>
+        </div>
+        <div class="flex gap-md">
+            <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-secondary dark:hover:text-secondary-fixed transition-colors text-label-sm font-label-sm focus:ring-2 focus:ring-primary"
+                href="#beranda">Beranda</a>
+            <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-secondary dark:hover:text-secondary-fixed transition-colors text-label-sm font-label-sm focus:ring-2 focus:ring-primary"
+                href="#fitur">Fitur</a>
+            <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-secondary dark:hover:text-secondary-fixed transition-colors text-label-sm font-label-sm focus:ring-2 focus:ring-primary"
+                href="#harga">Harga</a>
+            <a class="text-on-surface-variant dark:text-on-surface-variant hover:text-secondary dark:hover:text-secondary-fixed transition-colors text-label-sm font-label-sm focus:ring-2 focus:ring-primary"
+                href="#kontak">Kontak</a>
+        </div>
+        <div class="flex gap-sm">
+            <a aria-label="Facebook"
+                class="text-on-surface-variant hover:text-primary transition-colors focus:ring-2 focus:ring-primary rounded-full p-1"
+                href="#">
+                <span class="material-symbols-outlined" data-icon="language">language</span>
+            </a>
+            <a aria-label="Twitter"
+                class="text-on-surface-variant hover:text-primary transition-colors focus:ring-2 focus:ring-primary rounded-full p-1"
+                href="#">
+                <span class="material-symbols-outlined" data-icon="share">share</span>
+            </a>
+        </div>
+    </footer>
+
+
+</body>
+
+</html>

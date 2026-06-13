@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -47,9 +50,12 @@ func (h *UploadHandler) UploadImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate unique file name
+	// #13: Generate unique file name with nanosecond + random suffix
 	fileName := strings.ReplaceAll(handler.Filename, " ", "-")
-	uniqueName := time.Now().Format("20060102150405") + "-" + fileName
+	b := make([]byte, 4)
+	rand.Read(b)
+	randomHex := hex.EncodeToString(b)
+	uniqueName := fmt.Sprintf("%s-%s-%s", time.Now().Format("20060102150405.000000000"), randomHex, fileName)
 	filePath := filepath.Join(uploadDir, uniqueName)
 
 	// Create target file on server

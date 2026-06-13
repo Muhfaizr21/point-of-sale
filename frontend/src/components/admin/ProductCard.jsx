@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { API_BASE_URL } from '../services/apiClient'
+import { API_BASE_URL } from '../../services/apiClient'
 
-export function ProductCard({ product, onAddToCart }) {
+export function ProductCard({ product, onAddToCart, isBundle }) {
   const [imgError, setImgError] = useState(false)
 
   const formatPrice = (value) => {
@@ -15,18 +15,27 @@ export function ProductCard({ product, onAddToCart }) {
 
   const hasImage = product.icon && (product.icon.startsWith('/') || product.icon.startsWith('http')) && !imgError
   const hasVariations = product.variations && product.variations.length > 0
-  const lowStock = product.stock !== undefined && product.stock <= 5
+  const trackStock = product.track_stock !== false
+  const lowStock = trackStock && product.stock !== undefined && product.stock <= 5
 
   return (
     <div
       onClick={() => onAddToCart(product)}
       className="bg-surface rounded-lg p-sm sm:p-md border border-outline-variant hover:border-primary transition-all duration-200 cursor-pointer flex flex-col group relative"
     >
-      {lowStock && (
+      {isBundle ? (
+        <span className="absolute top-2 right-2 z-10 bg-surface-tint text-on-primary text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm">
+          Paket
+        </span>
+      ) : trackStock && product.stock === 0 ? (
+        <span className="absolute top-2 right-2 z-10 bg-error text-on-error text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm">
+          Habis
+        </span>
+      ) : lowStock && product.stock > 0 ? (
         <span className="absolute top-2 right-2 z-10 bg-error text-on-error text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm">
           Sisa {product.stock}
         </span>
-      )}
+      ) : null}
 
       <div className="aspect-video bg-surface-container-highest rounded-md mb-xs sm:mb-sm flex items-center justify-center overflow-hidden">
         {hasImage ? (
@@ -38,7 +47,7 @@ export function ProductCard({ product, onAddToCart }) {
           />
         ) : (
           <span className="material-symbols-outlined text-[32px] sm:text-[48px] text-on-surface-variant group-hover:text-primary transition-colors">
-            {product.icon || 'restaurant'}
+            {isBundle ? 'inventory' : (product.icon || 'restaurant')}
           </span>
         )}
       </div>
@@ -47,14 +56,17 @@ export function ProductCard({ product, onAddToCart }) {
         <h3 className="text-body-md sm:text-body-lg text-on-surface mb-xs truncate font-medium">
           {product.name}
         </h3>
-        <p className="text-on-surface-variant text-label-sm">
-          {product.category}
-        </p>
+        {!isBundle && (
+          <p className="text-on-surface-variant text-label-sm">
+            {product.category}
+          </p>
+        )}
       </div>
 
       <div className="flex justify-between items-end mt-xs sm:mt-sm">
         <div className="flex flex-col">
           {hasVariations && <span className="text-label-sm text-on-surface-variant">Mulai dari</span>}
+          {isBundle && <span className="text-label-sm text-on-surface-variant">Harga Paket</span>}
           <span className="text-body-lg sm:text-headline-md text-primary font-semibold">
             {formatPrice(product.price)}
           </span>

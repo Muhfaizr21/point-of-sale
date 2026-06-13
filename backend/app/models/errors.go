@@ -13,6 +13,9 @@ const (
 	ErrInternalError    ErrorCode = "INTERNAL_ERROR"
 	ErrDuplicateSKU     ErrorCode = "DUPLICATE_SKU"
 	ErrOutOfStock       ErrorCode = "OUT_OF_STOCK"
+	ErrUnauthorized     ErrorCode = "UNAUTHORIZED"
+	ErrConflict         ErrorCode = "CONFLICT"
+	ErrForbidden        ErrorCode = "FORBIDDEN"
 )
 
 type APIError struct {

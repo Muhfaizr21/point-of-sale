@@ -50,6 +50,11 @@ export const orderService = {
     return apiClient.post('/api/orders', orderData)
   },
 
+  // Update order status or notes
+  updateOrder: async (id, updateData) => {
+    return apiClient.put(`/api/orders/${id}`, updateData)
+  },
+
   // Get analytics data
   getAnalytics: async ({ dateFrom = '', dateTo = '' } = {}) => {
     const params = {

@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { Input } from './common/Input'
-import { apiClient, API_BASE_URL } from '../services/apiClient'
+import { TopBar } from '../common/TopBar'
+import { Input } from '../common/Input'
+import { apiClient, API_BASE_URL } from '../../services/apiClient'
 
 export function ProductPage({
   products,
+  categories,
   addProduct,
   updateProduct,
   deleteProduct,
@@ -21,10 +23,13 @@ export function ProductPage({
   const [formName, setFormName] = useState('')
   const [formCategory, setFormCategory] = useState('Makanan')
   const [formPrice, setFormPrice] = useState('')
+  const [formCostPrice, setFormCostPrice] = useState('')
   const [formVariations, setFormVariations] = useState([])
   const [formIcon, setFormIcon] = useState('restaurant')
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
+  const [formStock, setFormStock] = useState('')
+  const [formTrackStock, setFormTrackStock] = useState(true)
   const [formError, setFormError] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -67,10 +72,13 @@ export function ProductPage({
   const handleOpenAdd = () => {
     setEditingProduct(null)
     setFormName('')
-    setFormCategory(categories.find(c => c !== 'Semua') || '')
+    setFormCategory(categoryNames.find(c => c !== 'Semua') || '')
     setFormPrice('')
+    setFormCostPrice('')
     setFormVariations([])
     setFormIcon('restaurant')
+    setFormStock('')
+    setFormTrackStock(true)
     setImageFile(null)
     setImagePreview('')
     setFormError(null)
@@ -83,8 +91,11 @@ export function ProductPage({
     setFormName(product.name)
     setFormCategory(product.category)
     setFormPrice(product.price.toString())
+    setFormCostPrice(product.cost_price?.toString() || '')
     setFormVariations(product.variations || [])
     setFormIcon(product.icon || 'restaurant')
+    setFormStock(product.stock?.toString() || '')
+    setFormTrackStock(product.track_stock !== false)
     setImageFile(null)
     if (product.icon && (product.icon.startsWith('/') || product.icon.startsWith('http'))) {
       setImagePreview(product.icon.startsWith('/') ? `${API_BASE_URL}${product.icon}` : product.icon)
@@ -145,7 +156,10 @@ export function ProductPage({
         name: formName,
         category: formCategory,
         price: basePrice,
+        cost_price: parseInt(formCostPrice, 10) || 0,
         icon: iconUrl,
+        stock: parseInt(formStock) || 0,
+        track_stock: formTrackStock,
         variations: formVariations.map(v => ({ name: v.name, price: parseInt(v.price, 10) })),
       }
 
@@ -171,11 +185,11 @@ export function ProductPage({
     }
   }
 
-  // Get all unique categories dynamically
-  const categories = useMemo(() => {
-    const cats = new Set(products.map((p) => p.category))
-    return ['Semua', ...Array.from(cats)]
-  }, [products])
+  // Use categories passed from props (array of category objects) instead of deriving from products
+  const categoryNames = useMemo(() => {
+    if (!categories || !Array.isArray(categories)) return ['Semua']
+    return ['Semua', ...categories.map(c => typeof c === 'string' ? c : c.name)]
+  }, [categories])
 
   // Filtered and Sorted list for local search & filter
   const processedList = useMemo(() => {
@@ -217,27 +231,20 @@ export function ProductPage({
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-surface-container-low pb-[72px]">
       {/* Top Header */}
-      <header className="flex justify-between items-center px-lg py-md h-[72px] w-full border-b border-outline-variant bg-surface z-20">
-        <div className="flex items-center gap-md">
-          {/* Mobile menu toggle */}
+      <TopBar
+        title="Manajemen Produk"
+        onToggleSidebar={onToggleSidebar}
+        rightContent={
           <button
             type="button"
-            onClick={onToggleSidebar}
-            className="lg:hidden p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-highest transition-colors cursor-pointer mr-2 flex items-center justify-center"
+            onClick={handleOpenAdd}
+            className="rounded-lg font-headline-md font-semibold text-lg transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-primary flex items-center justify-center gap-2 cursor-pointer bg-primary text-on-primary hover:bg-surface-tint py-2 px-4"
           >
-            <span className="material-symbols-outlined">menu</span>
+            <span className="material-symbols-outlined">add</span>
+            Tambah Produk
           </button>
-          <h2 className="text-headline-md text-on-surface font-semibold">Manajemen Produk</h2>
-        </div>
-        <button
-          type="button"
-          onClick={handleOpenAdd}
-          className="rounded-lg font-headline-md font-semibold text-lg transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-primary flex items-center justify-center gap-2 cursor-pointer bg-primary text-on-primary hover:bg-surface-tint py-2 px-4"
-        >
-          <span className="material-symbols-outlined">add</span>
-          Tambah Produk
-        </button>
-      </header>
+        }
+      />
 
       {/* Main List Area */}
       <div className="flex-1 overflow-y-auto p-lg hide-scrollbar">
@@ -257,12 +264,10 @@ export function ProductPage({
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-md py-sm border border-outline-variant bg-surface rounded-lg text-body-md font-semibold text-on-surface cursor-pointer focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+              className="px-4 py-2 bg-surface-container-high border border-outline-variant rounded-full text-on-surface focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer pr-10"
             >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
+              {categoryNames.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
           </div>
@@ -306,8 +311,26 @@ export function ProductPage({
                     onClick={() => handleSort('price')}
                   >
                     <div className="flex items-center gap-xs">
-                      Harga
+                      Harga Jual
                       {sortField === 'price' && (
+                        <span className="material-symbols-outlined text-[16px] font-bold">
+                          {sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="p-md font-semibold text-on-surface-variant">
+                    <div className="flex items-center gap-xs">
+                      Harga Modal
+                    </div>
+                  </th>
+                  <th 
+                    className="p-md font-semibold cursor-pointer select-none hover:text-primary transition-colors"
+                    onClick={() => handleSort('stock')}
+                  >
+                    <div className="flex items-center gap-xs">
+                      Stok
+                      {sortField === 'stock' && (
                         <span className="material-symbols-outlined text-[16px] font-bold">
                           {sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
                         </span>
@@ -320,7 +343,7 @@ export function ProductPage({
               <tbody className="divide-y divide-surface-variant">
                 {loading ? (
                   <tr>
-                    <td colSpan="5" className="p-xl text-center text-primary">
+                    <td colSpan="6" className="p-xl text-center text-primary">
                       <div className="flex justify-center items-center gap-sm">
                         <span className="material-symbols-outlined animate-spin text-[32px]">sync</span>
                         <span className="text-body-lg font-medium">Memuat data produk...</span>
@@ -329,14 +352,14 @@ export function ProductPage({
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan="5" className="p-xl text-center text-error">
+                    <td colSpan="6" className="p-xl text-center text-error">
                       <span className="material-symbols-outlined text-[48px] block mb-xs">error</span>
                       <p className="text-body-lg font-medium">Gagal memuat produk: {error}</p>
                     </td>
                   </tr>
                 ) : processedList.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="p-xl text-center text-on-surface-variant">
+                    <td colSpan="6" className="p-xl text-center text-on-surface-variant">
                       <span className="material-symbols-outlined text-[48px] block mb-xs">inventory_2</span>
                       Belum ada data produk yang cocok.
                     </td>
@@ -368,6 +391,20 @@ export function ProductPage({
                       </td>
                       {/* Price */}
                       <td className="p-md font-semibold">{formatPrice(product.price)}</td>
+                      {/* Cost Price */}
+                      <td className="p-md text-on-surface-variant">{formatPrice(product.cost_price || 0)}</td>
+                      {/* Stock */}
+                      <td className="p-md">
+                        {product.track_stock === false ? (
+                          <span className="px-3 py-1 bg-surface-container-high border border-outline-variant/30 rounded-full text-label-sm text-on-surface-variant">
+                            Unlimited
+                          </span>
+                        ) : (
+                          <span className={`font-semibold ${product.stock <= 5 ? 'text-error' : product.stock <= 20 ? 'text-warning' : 'text-on-surface'}`}>
+                            {product.stock}
+                          </span>
+                        )}
+                      </td>
                       {/* Actions */}
                       <td className="p-md text-right whitespace-nowrap">
                         <button
@@ -507,25 +544,67 @@ export function ProductPage({
                     onChange={(e) => setFormCategory(e.target.value)}
                     className="w-full px-4 py-3 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-lg font-body-lg text-on-surface"
                   >
-                    {categories.filter(c => c !== 'Semua').map(cat => (
+                    {categoryNames.filter(c => c !== 'Semua').map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
                 </div>
 
                 {formVariations.length === 0 && (
-                  <div className="space-y-2">
-                    <label className="text-label-lg font-semibold text-on-surface-variant block">Harga (Rp)</label>
-                    <input
-                      type="text"
-                      required
-                      value={formatInputValue(formPrice)}
-                      onChange={(e) => handlePriceChange(e.target.value, setFormPrice)}
-                      placeholder="Contoh: 15.000"
-                      className="w-full px-4 py-3 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-lg font-body-lg text-on-surface placeholder:text-on-surface-variant"
-                    />
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="space-y-2 flex-1">
+                      <label className="text-label-lg font-semibold text-on-surface-variant block">Harga Jual (Rp)</label>
+                      <input
+                        type="text"
+                        required
+                        value={formatInputValue(formPrice)}
+                        onChange={(e) => handlePriceChange(e.target.value, setFormPrice)}
+                        placeholder="Contoh: 15.000"
+                        className="w-full px-4 py-3 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-lg font-body-lg text-on-surface placeholder:text-on-surface-variant"
+                      />
+                    </div>
+                    <div className="space-y-2 flex-1">
+                      <label className="text-label-lg font-semibold text-on-surface-variant block">Harga Modal (Rp)</label>
+                      <input
+                        type="text"
+                        value={formatInputValue(formCostPrice)}
+                        onChange={(e) => handlePriceChange(e.target.value, setFormCostPrice)}
+                        placeholder="Contoh: 10.000"
+                        className="w-full px-4 py-3 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-lg font-body-lg text-on-surface placeholder:text-on-surface-variant"
+                      />
+                    </div>
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <label className="text-label-lg font-semibold text-on-surface-variant block">Stok</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min="0"
+                      value={formStock}
+                      onChange={(e) => setFormStock(e.target.value)}
+                      placeholder="0"
+                      disabled={!formTrackStock}
+                      className="w-32 px-3 py-2 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-md text-on-surface placeholder:text-on-surface-variant disabled:opacity-50"
+                    />
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formTrackStock}
+                        onChange={(e) => {
+                          setFormTrackStock(e.target.checked)
+                          if (!e.target.checked) setFormStock('')
+                        }}
+                        className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
+                      />
+                      <span className="text-body-sm text-on-surface-variant">Lacak stok</span>
+                    </label>
+                  </div>
+                  {!formTrackStock && (
+                    <p className="text-label-xs text-on-surface-variant">Stok produk ini tidak akan dilacak (unlimited)</p>
+                  )}
+                </div>
 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">

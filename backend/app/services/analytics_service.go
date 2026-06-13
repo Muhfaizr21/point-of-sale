@@ -47,7 +47,7 @@ func (s *analyticsService) GetAnalytics(ctx context.Context, query *models.Analy
 	err := s.db.WithContext(ctx).
 		Preload("OrderItems").
 		Where("created_at >= ? AND created_at <= ?", dateFrom, dateTo.AddDate(0, 0, 1)).
-		Where("order_status = ?", "COMPLETED").
+		Where("order_status IN ?", []string{"COMPLETED", "SELESAI"}).
 		Order("created_at asc").
 		Find(&orders).Error
 	if err != nil {
@@ -111,13 +111,26 @@ func (s *analyticsService) GetAnalytics(ctx context.Context, query *models.Analy
 			productMap[key].Revenue += item.Price * item.Quantity
 		}
 
-		// Payment method
-		method := order.PaymentMethod
-		if paymentMap[method] == nil {
-			paymentMap[method] = &models.PaymentMethodSales{Method: method}
+		// Payment method (unpack SPLIT into individual methods)
+		if order.PaymentMethod == "SPLIT" && len(order.SplitPayments) > 0 {
+			for _, sp := range order.SplitPayments {
+				if sp.Amount <= 0 {
+					continue
+				}
+				if paymentMap[sp.Method] == nil {
+					paymentMap[sp.Method] = &models.PaymentMethodSales{Method: sp.Method}
+				}
+				paymentMap[sp.Method].Count++
+				paymentMap[sp.Method].Revenue += sp.Amount
+			}
+		} else {
+			method := order.PaymentMethod
+			if paymentMap[method] == nil {
+				paymentMap[method] = &models.PaymentMethodSales{Method: method}
+			}
+			paymentMap[method].Count++
+			paymentMap[method].Revenue += order.Total
 		}
-		paymentMap[method].Count++
-		paymentMap[method].Revenue += order.Total
 
 		// Cashier
 		cashierName := order.Cashier
@@ -198,12 +211,15 @@ func (s *analyticsService) GetAnalytics(ctx context.Context, query *models.Analy
 	// Calculate weekly sales
 	weeklySales := s.calculateWeeklySales(orders, dateFrom, dateTo)
 
-	// Find best day
+	// #12: Find best day, return empty if no revenue
 	bestDay := models.DailySales{}
 	for _, d := range dailySales {
 		if d.Revenue > bestDay.Revenue {
 			bestDay = d
 		}
+	}
+	if bestDay.Revenue == 0 && bestDay.Date == "" {
+		bestDay = models.DailySales{}
 	}
 
 	// Calculate real growth (compare with previous period of same length)
@@ -253,7 +269,7 @@ func (s *analyticsService) calculateRevenueGrowth(ctx context.Context, dateFrom,
 	s.db.WithContext(ctx).
 		Model(&models.Order{}).
 		Where("created_at >= ? AND created_at <= ?", prevFrom, prevTo.AddDate(0, 0, 1)).
-		Where("order_status = ?", "COMPLETED").
+		Where("order_status IN ?", []string{"COMPLETED", "SELESAI"}).
 		Select("COALESCE(SUM(total), 0)").
 		Scan(&prevRevenue)
 

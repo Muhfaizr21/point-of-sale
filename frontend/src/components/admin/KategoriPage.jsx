@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Input } from './common/Input'
+import { TopBar } from '../common/TopBar'
+import { Input } from '../common/Input'
 
 export function KategoriPage({ categories, addCategory, updateCategory, deleteCategory, onToggleSidebar, loading, error }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -62,27 +63,20 @@ export function KategoriPage({ categories, addCategory, updateCategory, deleteCa
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-surface-container-low pb-[72px]">
       {/* Header */}
-      <header className="flex justify-between items-center px-lg py-md h-[72px] w-full border-b border-outline-variant bg-surface z-20">
-        <div className="flex items-center gap-md">
+      <TopBar
+        title="Kategori Menu"
+        subtitle="Kelola kelompok menu untuk memudahkan pencarian."
+        onToggleSidebar={onToggleSidebar}
+        rightContent={
           <button
-            onClick={onToggleSidebar}
-            className="lg:hidden p-2 -ml-2 text-on-surface hover:bg-surface-container rounded-full transition-colors"
+            onClick={handleOpenAdd}
+            className="btn-primary shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-xs rounded-full px-lg py-3 font-semibold"
           >
-            <span className="material-symbols-outlined">menu</span>
+            <span className="material-symbols-outlined text-[20px]">add</span>
+            <span className="hidden sm:inline">Tambah Kategori</span>
           </button>
-          <div>
-            <h2 className="text-headline-sm font-bold text-on-surface bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary pb-1">Kategori Menu</h2>
-            <p className="text-body-sm text-on-surface-variant hidden sm:block">Kelola kelompok menu untuk memudahkan pencarian.</p>
-          </div>
-        </div>
-        <button
-          onClick={handleOpenAdd}
-          className="btn-primary shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-xs rounded-full px-lg py-3 font-semibold"
-        >
-          <span className="material-symbols-outlined text-[20px]">add</span>
-          <span className="hidden sm:inline">Tambah Kategori</span>
-        </button>
-      </header>
+        }
+      />
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-lg hide-scrollbar">

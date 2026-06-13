@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Harga - SentraKas POS</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet">
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#adc8f5",
+                        "tertiary-container": "#31394e",
+                        "tertiary": "#1c2337",
+                        "tertiary-fixed": "#dae2fd",
+                        "outline-variant": "#c4c6cf",
+                        "inverse-surface": "#2d3133",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#88d982",
+                        "surface-variant": "#e0e3e5",
+                        "secondary-container": "#a0f399",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#455f87",
+                        "on-surface": "#191c1e",
+                        "primary-container": "#1e3a5f",
+                        "on-primary-fixed-variant": "#2d486d",
+                        "primary-fixed": "#d5e3ff",
+                        "on-tertiary-fixed": "#131b2e",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#74777f",
+                        "on-tertiary-fixed-variant": "#3f465c",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-surface-variant": "#43474e",
+                        "primary": "#022448",
+                        "on-secondary-container": "#217128",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#9ba3bb",
+                        "on-secondary-fixed": "#002204",
+                        "inverse-primary": "#adc8f5",
+                        "surface": "#f7f9fb",
+                        "on-primary-fixed": "#001c3b",
+                        "tertiary-fixed-dim": "#bec6e0",
+                        "on-primary-container": "#8aa4cf",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-dim": "#d8dadc",
+                        "secondary": "#1b6d24",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-container": "#eceef0",
+                        "surface-container-high": "#e6e8ea",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#191c1e",
+                        "secondary-fixed": "#a3f69c",
+                        "on-secondary-fixed-variant": "#005312",
+                        "background": "#f7f9fb",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f7f9fb",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "1.5rem",
+                        "md": "1.5rem",
+                        "sm": "1rem",
+                        "xs": "0.5rem",
+                        "margin-desktop": "2.5rem",
+                        "xl": "3rem",
+                        "base": "4px",
+                        "lg": "2rem",
+                        "margin-mobile": "1rem"
+                    },
+                    "fontFamily": {
+                        "title-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "title-lg": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glow-hover:hover {
+            box-shadow: 0 4px 20px rgba(46, 125, 50, 0.4);
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col">
+    <!-- TopNavBar -->
+    <nav
+        class="bg-surface/80 dark:bg-surface-dim/80 backdrop-blur-md font-body-md text-body-md docked full-width top-0 sticky border-b border-outline-variant/30 shadow-sm z-50">
+        <div class="flex justify-between items-center h-[72px] px-margin-desktop max-w-[1440px] mx-auto w-full">
+            <div class="h-10 flex items-center"><img
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSWhhFsCkGwQGFp4BmMhiJ7aGG6r5d3l7gREA3R7h3qLJhDHlCeuFLgjNfeyblJeLMnBYHsrRh9deiMSeMJRAUe7dJUHe5AqqDx-TjZ3FJDOjzC_R_qSGqHVoJh66sRtT1HDeXEQ8rLA04xEGlZPH6-mfRph8uoBOGs-qM-8FcQGQ06DhURWZdYgxbuHhimVxgsyeESV1DdbtFjoHmNegpmjSDqIVcI0kkEVKEWQ47oY84bWn8rqdHqp4wVIo9tYDyo-nxyJ2QVA"
+                    alt="SentraKas Logo" class="h-full w-auto object-contain"></div>
+            <!-- Desktop Navigation -->
+            <div class="hidden md:flex space-x-lg">
+                <a class="text-on-surface-variant dark:text-on-tertiary-container hover:text-secondary dark:hover:text-secondary-fixed transition-colors duration-200 cursor-pointer active:opacity-80"
+                    href="#">Features</a>
+                <a class="text-primary dark:text-primary-fixed-dim font-bold border-b-2 border-secondary hover:text-secondary dark:hover:text-secondary-fixed transition-colors duration-200 cursor-pointer active:opacity-80"
+                    href="#">Pricing</a>
+                <a class="text-on-surface-variant dark:text-on-tertiary-container hover:text-secondary dark:hover:text-secondary-fixed transition-colors duration-200 cursor-pointer active:opacity-80"
+                    href="#">Contact</a>
+            </div>
+            <div class="hidden md:flex">
+                <button
+                    class="bg-[#2E7D32] text-on-primary px-lg py-sm rounded-lg font-label-md text-label-md hover:bg-secondary-container hover:text-on-secondary-container transition-colors glow-hover shadow-[0px_4px_12px_rgba(30,58,95,0.08)]">
+                    Get Started
+                </button>
+            </div>
+            <!-- Mobile Menu Icon (Simplified for structure) -->
+            <div class="md:hidden flex items-center text-primary">
+                <span class="material-symbols-outlined text-headline-md">menu</span>
+            </div>
+        </div>
+    </nav>
+    <!-- Main Content -->
+    <main class="flex-grow w-full max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop py-xl">
+        <!-- Header Section -->
+        <div class="text-center mb-xl max-w-3xl mx-auto">
+            <h1 class="font-display-lg text-display-lg text-primary mb-md hidden md:block">Pilih Paket Sesuai Kebutuhan
+                Bisnis Anda</h1>
+            <h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-md md:hidden">Pilih Paket Bisnis
+                Anda</h1>
+            <p class="font-body-lg text-body-lg text-on-surface-variant">Solusi kasir cerdas untuk pertumbuhan usaha
+                tanpa batas. Harga transparan, tanpa biaya tersembunyi.</p>
+        </div>
+        <!-- Pricing Cards Bento Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-lg max-w-5xl mx-auto mb-xl items-end">
+            <!-- Basic Plan Card -->
+            <div
+                class="bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-lg flex flex-col h-full hover:shadow-[0px_4px_12px_rgba(30,58,95,0.08)] transition-all duration-200">
+                <div class="mb-md">
+                    <h3 class="font-headline-md text-headline-md text-primary mb-xs">Basic</h3>
+                    <p class="font-body-md text-body-md text-on-surface-variant">Ideal untuk UMKM dan usaha rintisan.
+                    </p>
+                </div>
+                <div class="mb-lg">
+                    <span class="font-display-lg text-display-lg text-primary">Rp 150.000</span>
+                    <span class="font-body-md text-body-md text-on-surface-variant">/bln</span>
+                </div>
+                <ul class="flex-grow space-y-sm mb-xl">
+                    <li class="flex items-start gap-sm">
+                        <span class="material-symbols-outlined text-secondary mt-1">check_circle</span>
+                        <span class="font-body-md text-body-md text-on-surface">1 Outlet</span>
+                    </li>
+                    <li class="flex items-start gap-sm">
+                        <span class="material-symbols-outlined text-secondary mt-1">check_circle</span>
+                        <span class="font-body-md text-body-md text-on-surface">Laporan Standar</span>
+                    </li>
+                    <li class="flex items-start gap-sm">
+                        <span class="material-symbols-outlined text-secondary mt-1">check_circle</span>
+                        <span class="font-body-md text-body-md text-on-surface">Dukungan Email</span>
+                    </li>
+                </ul>
+                <button
+                    class="w-full bg-transparent border border-outline text-primary px-lg py-sm rounded-xl font-label-md text-label-md hover:bg-surface-container transition-colors">
+                    Mulai Basic
+                </button>
+            </div>
+            <!-- Pro Plan Card (Recommended) -->
+            <div
+                class="bg-surface-container-lowest border-t-4 border-t-[#2E7D32] border-x border-b border-outline-variant/50 rounded-xl p-lg flex flex-col h-full shadow-[0px_10px_25px_rgba(0,0,0,0.1)] relative">
+                <div
+                    class="absolute top-0 right-lg -translate-y-1/2 bg-[#2E7D32] text-white px-sm py-xs rounded-full font-label-sm text-label-sm shadow-sm">
+                    Rekomendasi
+                </div>
+                <div class="mb-md mt-sm">
+                    <h3 class="font-headline-md text-headline-md text-primary mb-xs">Pro</h3>
+                    <p class="font-body-md text-body-md text-on-surface-variant">Untuk bisnis berkembang dengan
+                        kebutuhan kompleks.</p>
+                </div>
+                <div class="mb-lg">
+                    <span class="font-display-lg text-display-lg text-primary">Rp 350.000</span>
+                    <span class="font-body-md text-body-md text-on-surface-variant">/bln</span>
+                </div>
+                <ul class="flex-grow space-y-sm mb-xl">
+                    <li class="flex items-start gap-sm">
+                        <span class="material-symbols-outlined text-secondary mt-1">check_circle</span>
+                        <span class="font-body-md text-body-md text-on-surface">Multi-Outlet (Hingga 5)</span>
+                    </li>
+                    <li class="flex items-start gap-sm">
+                        <span class="material-symbols-outlined text-secondary mt-1">check_circle</span>
+                        <span class="font-body-md text-body-md text-on-surface">Manajemen Stok Lanjutan</span>
+                    </li>
+                    <li class="flex items-start gap-sm">
+                        <span class="material-symbols-outlined text-secondary mt-1">check_circle</span>
+                        <span class="font-body-md text-body-md text-on-surface">Integrasi Pembayaran Otomatis</span>
+                    </li>
+                    <li class="flex items-start gap-sm">
+                        <span class="material-symbols-outlined text-secondary mt-1">check_circle</span>
+                        <span class="font-body-md text-body-md text-on-surface">Dukungan Prioritas 24/7</span>
+                    </li>
+                </ul>
+                <button
+                    class="w-full bg-[#2E7D32] text-on-primary px-lg py-sm rounded-xl font-label-md text-label-md hover:opacity-90 transition-opacity glow-hover">
+                    Pilih Pro
+                </button>
+            </div>
+        </div>
+        <!-- FAQ Section -->
+        <div class="max-w-3xl mx-auto mt-xl pt-xl border-t border-outline-variant/30">
+            <h2 class="font-headline-lg text-headline-lg text-primary mb-lg text-center hidden md:block">Pertanyaan yang
+                Sering Diajukan</h2>
+            <h2 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-lg text-center md:hidden">FAQ
+            </h2>
+            <div class="space-y-md">
+                <!-- FAQ Item 1 -->
+                <div class="bg-surface-container-low rounded-lg p-md">
+                    <h4 class="font-title-lg text-title-lg text-on-surface mb-xs">Apakah ada biaya tambahan atau
+                        instalasi?</h4>
+                    <p class="font-body-md text-body-md text-on-surface-variant">Tidak ada biaya instalasi atau setup
+                        awal. Anda hanya membayar biaya berlangganan bulanan sesuai paket yang dipilih.</p>
+                </div>
+                <!-- FAQ Item 2 -->
+                <div class="bg-surface-container-low rounded-lg p-md">
+                    <h4 class="font-title-lg text-title-lg text-on-surface mb-xs">Bisakah saya upgrade dari Basic ke Pro
+                        nanti?</h4>
+                    <p class="font-body-md text-body-md text-on-surface-variant">Tentu saja. Anda dapat melakukan
+                        upgrade paket kapan saja melalui dashboard akun Anda, dan biaya akan disesuaikan secara
+                        proporsional.</p>
+                </div>
+                <!-- FAQ Item 3 -->
+                <div class="bg-surface-container-low rounded-lg p-md">
+                    <h4 class="font-title-lg text-title-lg text-on-surface mb-xs">Apakah bisa membatalkan langganan
+                        kapan saja?</h4>
+                    <p class="font-body-md text-body-md text-on-surface-variant">Ya, tidak ada kontrak jangka panjang.
+                        Anda dapat membatalkan langganan bulanan Anda kapan saja tanpa denda.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    <!-- Footer -->
+    <footer
+        class="bg-tertiary dark:bg-inverse-surface text-on-tertiary dark:text-inverse-on-surface font-body-md text-body-md full-width flat no shadows">
+        <div
+            class="w-full py-xl px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-md max-w-[1440px] mx-auto">
+            <div class="h-10 flex items-center"><img
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSWhhFsCkGwQGFp4BmMhiJ7aGG6r5d3l7gREA3R7h3qLJhDHlCeuFLgjNfeyblJeLMnBYHsrRh9deiMSeMJRAUe7dJUHe5AqqDx-TjZ3FJDOjzC_R_qSGqHVoJh66sRtT1HDeXEQ8rLA04xEGlZPH6-mfRph8uoBOGs-qM-8FcQGQ06DhURWZdYgxbuHhimVxgsyeESV1DdbtFjoHmNegpmjSDqIVcI0kkEVKEWQ47oY84bWn8rqdHqp4wVIo9tYDyo-nxyJ2QVA"
+                    alt="SentraKas Logo" class="h-full w-auto object-contain brightness-0 invert"></div>
+            <div class="flex flex-wrap justify-center gap-md">
+                <a class="text-on-tertiary-fixed-variant hover:text-on-tertiary transition-colors" href="#">Privacy
+                    Policy</a>
+                <a class="text-on-tertiary-fixed-variant hover:text-on-tertiary transition-colors" href="#">Terms of
+                    Service</a>
+                <a class="text-on-tertiary-fixed-variant hover:text-on-tertiary transition-colors" href="#">Help
+                    Center</a>
+                <a class="text-on-tertiary-fixed-variant hover:text-on-tertiary transition-colors" href="#">API Docs</a>
+            </div>
+            <div class="text-on-tertiary-fixed-variant text-center md:text-right text-sm">
+                © 2024 SentraKas. High-performance POS for growing businesses.
+            </div>
+        </div>
+    </footer>
+
+
+</body>
+
+</html>

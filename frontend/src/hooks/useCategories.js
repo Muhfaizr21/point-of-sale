@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '../services/apiClient'
+import { useAuth } from '../context/AuthContext'
 
 export function useCategories() {
+  const { user } = useAuth()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -20,8 +22,10 @@ export function useCategories() {
   }, [])
 
   useEffect(() => {
-    fetchCategories()
-  }, [fetchCategories])
+    if (user) {
+      fetchCategories()
+    }
+  }, [fetchCategories, user])
 
   const addCategory = async (categoryName) => {
     setLoading(true)

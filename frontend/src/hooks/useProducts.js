@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { apiClient } from '../services/apiClient'
+import { useAuth } from '../context/AuthContext'
 
 export function useProducts() {
+  const { user } = useAuth()
   const [productsList, setProductsList] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -22,8 +24,10 @@ export function useProducts() {
   }, [])
 
   useEffect(() => {
-    fetchProducts()
-  }, [fetchProducts])
+    if (user) {
+      fetchProducts()
+    }
+  }, [fetchProducts, user])
 
   const addProduct = async (product) => {
     setLoading(true)
@@ -33,8 +37,10 @@ export function useProducts() {
         name: product.name,
         category: product.category,
         price: product.price,
+        cost_price: product.cost_price || 0,
         icon: product.icon,
-        stock: 100, // default stock
+        stock: product.stock !== undefined ? product.stock : 100,
+        track_stock: product.track_stock !== false,
         variations: product.variations || [],
       })
       await fetchProducts()
@@ -54,8 +60,10 @@ export function useProducts() {
         name: updatedProduct.name,
         category: updatedProduct.category,
         price: updatedProduct.price,
+        cost_price: updatedProduct.cost_price || 0,
         icon: updatedProduct.icon,
-        stock: updatedProduct.stock || 100,
+        stock: updatedProduct.stock !== undefined ? updatedProduct.stock : 100,
+        track_stock: updatedProduct.track_stock !== false,
         variations: updatedProduct.variations || [],
       })
       await fetchProducts()

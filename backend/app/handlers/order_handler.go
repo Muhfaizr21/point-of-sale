@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"point-of-sale/backend/app/middleware"
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/services"
 	"strconv"
@@ -24,7 +25,13 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	order, err := h.service.Checkout(r.Context(), &req)
+	// #3: Get cashier name from authenticated user
+	cashierName := "Admin"
+	if user := middleware.GetUser(r); user != nil {
+		cashierName = user.Name
+	}
+
+	order, err := h.service.Checkout(r.Context(), &req, cashierName)
 	if err != nil {
 		models.WriteError(w, err)
 		return
@@ -105,14 +112,9 @@ func (h *OrderHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *OrderHandler) GetByID(w http.ResponseWriter, r *http.Request) {
-	// Extract ID from path - simplified without gorilla/mux
-	path := r.URL.Path
-	idStr := strings.TrimPrefix(path, "/api/orders/")
-	idStr = strings.TrimPrefix(idStr, "/")
-
-	id, err := strconv.ParseUint(idStr, 10, 32)
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
 	if err != nil {
-		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Invalid order ID", 400))
+		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "ID pesanan tidak valid", 400))
 		return
 	}
 
@@ -123,7 +125,56 @@ func (h *OrderHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if order == nil {
-		models.WriteError(w, models.NewAPIError(models.ErrNotFound, "Order not found", 404))
+		models.WriteError(w, models.NewAPIError(models.ErrNotFound, "Pesanan tidak ditemukan", 404))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(order)
+}
+
+// #16: Refund — reverse stock + mark REFUND
+func (h *OrderHandler) Refund(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
+	if err != nil {
+		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "ID pesanan tidak valid", 400))
+		return
+	}
+
+	var req models.RefundOrderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format data tidak valid", 400))
+		return
+	}
+
+	order, err := h.service.RefundOrder(r.Context(), uint(id), &req)
+	if err != nil {
+		models.WriteError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(order)
+}
+
+func (h *OrderHandler) Update(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
+	if err != nil {
+		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "ID pesanan tidak valid", 400))
+		return
+	}
+
+	var req models.UpdateOrderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format data tidak valid", 400))
+		return
+	}
+
+	order, err := h.service.UpdateOrder(r.Context(), uint(id), &req)
+	if err != nil {
+		models.WriteError(w, err)
 		return
 	}
 

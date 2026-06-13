@@ -2,13 +2,13 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
-	"math/rand"
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/repositories"
 	"regexp"
 	"strings"
-	"time"
 )
 
 type ProductService interface {
@@ -47,8 +47,9 @@ func (s *productService) CreateProduct(ctx context.Context, req *models.CreatePr
 		return nil, err
 	}
 	if existing != nil {
-		// append a random number
-		sku = fmt.Sprintf("%s-%d", sku, rand.Intn(999))
+		b := make([]byte, 2)
+		rand.Read(b)
+		sku = fmt.Sprintf("%s-%s", sku, hex.EncodeToString(b))
 	}
 
 	stock := req.Stock
@@ -60,9 +61,11 @@ func (s *productService) CreateProduct(ctx context.Context, req *models.CreatePr
 		Name:       req.Name,
 		Category:   req.Category,
 		Price:      req.Price,
+		CostPrice:  req.CostPrice,
 		Icon:       req.Icon,
 		SKU:        sku,
 		Stock:      stock,
+		TrackStock: req.TrackStock,
 		Variations: req.Variations,
 	}
 
@@ -89,8 +92,10 @@ func (s *productService) UpdateProduct(ctx context.Context, id uint, req *models
 	product.Name = req.Name
 	product.Category = req.Category
 	product.Price = req.Price
+	product.CostPrice = req.CostPrice
 	product.Icon = req.Icon
 	product.Stock = req.Stock
+	product.TrackStock = req.TrackStock
 	product.Variations = req.Variations
 
 	err = s.repo.Update(ctx, product)
@@ -149,8 +154,9 @@ func (s *productService) generateSKU(name string) string {
 	processed = strings.ToUpper(processed)
 
 	// Add random suffix to avoid collisions
-	rand.Seed(time.Now().UnixNano())
-	randomSuffix := fmt.Sprintf("%04d", rand.Intn(10000))
+	b := make([]byte, 2)
+	rand.Read(b)
+	randomSuffix := hex.EncodeToString(b)
 
 	if len(processed) > 15 {
 		processed = processed[:15]

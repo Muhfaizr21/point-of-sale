@@ -1,17 +1,36 @@
 package middleware
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"point-of-sale/backend/app/models"
+	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
-// CORS adds standard Access Control headers to requests
+type contextKey string
+
+const UserContextKey contextKey = "user"
+
+var allowedOrigins = map[string]bool{
+	"http://localhost:5173": true,
+	"http://localhost:3000": true,
+	"http://127.0.0.1:5173": true,
+	"http://127.0.0.1:3000": true,
+}
+
 func CORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
@@ -24,7 +43,6 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-// Logger logs incoming HTTP requests details and timing
 func Logger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -34,7 +52,6 @@ func Logger(next http.Handler) http.Handler {
 	})
 }
 
-// Recovery recovers from HTTP handler panics and returns an APIError response
 func Recovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -50,4 +67,65 @@ func Recovery(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+func GetUser(r *http.Request) *models.User {
+	if user, ok := r.Context().Value(UserContextKey).(*models.User); ok {
+		return user
+	}
+	return nil
+}
+
+func Authenticate(db *gorm.DB, skipPaths ...string) func(http.Handler) http.Handler {
+	skipMap := make(map[string]bool)
+	for _, p := range skipPaths {
+		skipMap[p] = true
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Skip auth for public paths
+			for path := range skipMap {
+				if strings.HasPrefix(r.URL.Path, path) {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			// Skip OPTIONS requests for CORS
+			if r.Method == "OPTIONS" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			token := r.Header.Get("Authorization")
+			if len(token) > 7 && strings.HasPrefix(token, "Bearer ") {
+				token = token[7:]
+			} else {
+				token = ""
+			}
+
+			if token == "" {
+				models.WriteError(w, models.NewAPIError(models.ErrUnauthorized, "Token diperlukan", 401))
+				return
+			}
+
+			var user models.User
+			if err := db.Where("token = ?", token).First(&user).Error; err != nil {
+				models.WriteError(w, models.NewAPIError(models.ErrUnauthorized, "Token tidak valid", 401))
+				return
+			}
+
+			if user.TokenExpiresAt != nil && time.Now().After(*user.TokenExpiresAt) {
+				db.Model(&user).Update("token", "")
+				models.WriteError(w, models.NewAPIError(models.ErrUnauthorized, "Token sudah kadaluarsa", 401))
+				return
+			}
+
+			user.Password = ""
+			user.Token = ""
+			ctx := context.WithValue(r.Context(), UserContextKey, &user)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }

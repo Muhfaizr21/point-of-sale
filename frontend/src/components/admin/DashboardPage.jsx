@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { Button } from './common/Button'
+import { Button } from '../common/Button'
+import { TopBar } from '../common/TopBar'
 import {
   LineChart,
   Line,
@@ -22,8 +23,8 @@ import {
   PolarRadiusAxis,
   Radar,
 } from 'recharts'
-import { orderService } from '../services/orderService'
-import { targetService } from '../services/targetService'
+import { orderService } from '../../services/orderService'
+import { targetService } from '../../services/targetService'
 
 // ============================================
 // CUSTOM COMPONENTS
@@ -228,11 +229,10 @@ export function DashboardPage({ onToggleSidebar }) {
       growth: 0
     }))
 
-    // Why Categories
+    // Why Categories — kontribusi per kategori thd total revenue
     const whyCategories = (analyticsData.category_sales || []).map((cat, index) => ({
       name: cat.category,
       revenue: cat.revenue,
-      target: currentTarget?.revenue_target || 1000000,
       percent: Math.round(cat.percent),
       color: COLORS.chart[index % COLORS.chart.length]
     }))
@@ -340,43 +340,33 @@ export function DashboardPage({ onToggleSidebar }) {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-surface-container-low pb-[72px]">
       {/* Top Header */}
-      <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-md px-lg py-md border-b border-outline-variant bg-surface z-20">
-        <div className="flex items-center gap-md">
-          <button
-            type="button"
-            onClick={onToggleSidebar}
-            className="lg:hidden p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-highest transition-colors cursor-pointer"
-          >
-            <span className="material-symbols-outlined">menu</span>
-          </button>
-          <div>
-            <h2 className="text-headline-md text-on-surface font-semibold">Dashboard Kasir</h2>
-            <p className="text-label-sm text-on-surface-variant">
-              Update terakhir: {formatTime(lastUpdate.toISOString())}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-md">
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="px-md py-sm border border-outline-variant bg-surface-container-high rounded-lg text-body-md font-medium text-on-surface cursor-pointer"
-          >
-            <option value="today">Hari Ini</option>
-            <option value="week">7 Hari</option>
-            <option value="month">30 Hari</option>
-            <option value="year">Tahun Ini</option>
-          </select>
-          <Button
-            variant="outline"
-            onClick={fetchData}
-            className="py-2 px-3"
-          >
-            <span className="material-symbols-outlined text-[20px]">refresh</span>
-            Refresh
-          </Button>
-        </div>
-      </header>
+      <TopBar
+        title="Dashboard Kasir"
+        subtitle={`Update terakhir: ${formatTime(lastUpdate.toISOString())}`}
+        onToggleSidebar={onToggleSidebar}
+        rightContent={
+          <>
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
+              className="px-md py-sm border border-outline-variant bg-surface-container-high rounded-lg text-body-md font-medium text-on-surface cursor-pointer"
+            >
+              <option value="today">Hari Ini</option>
+              <option value="week">7 Hari</option>
+              <option value="month">30 Hari</option>
+              <option value="year">Tahun Ini</option>
+            </select>
+            <Button
+              variant="outline"
+              onClick={fetchData}
+              className="py-2 px-3"
+            >
+              <span className="material-symbols-outlined text-[20px]">refresh</span>
+              Refresh
+            </Button>
+          </>
+        }
+      />
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-lg hide-scrollbar">
@@ -686,43 +676,34 @@ export function DashboardPage({ onToggleSidebar }) {
             </div>
           </div>
 
-          {/* Category Performance */}
+          {/* Category Performance — kontribusi per kategori */}
           <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden">
             <div className="p-md border-b border-outline-variant bg-surface-container-lowest">
               <h3 className="text-body-lg font-semibold text-on-surface flex items-center gap-sm">
                 <span className="material-symbols-outlined text-primary text-[20px]">category</span>
                 Performa Kategori
               </h3>
-              <p className="text-label-sm text-on-surface-variant">Target vs Realisasi</p>
+              <p className="text-label-sm text-on-surface-variant">Distribusi pendapatan per kategori</p>
             </div>
             <div className="p-md space-y-md">
-              {dashboardData.whyCategories.map((cat, index) => {
-                const percent = cat.percent
-                const isOver = percent >= 100
-                return (
-                  <div key={index} className="space-y-xs">
-                    <div className="flex justify-between items-center">
-                      <span className="text-body-sm font-medium text-on-surface">{cat.name}</span>
-                      <div className="flex items-center gap-md">
-                        <span className="text-label-xs text-on-surface-variant">{formatPrice(cat.revenue)}</span>
-                        <span className={`text-label-sm font-bold ${isOver ? 'text-green-600' : 'text-warning'}`}>
-                          {percent}%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="h-3 bg-surface-container-highest rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${isOver ? 'bg-green-500' : 'bg-warning'}`}
-                        style={{ width: `${isOver ? 100 : percent}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-label-xs text-on-surface-variant">
-                      <span>Target: {formatPrice(cat.target)}</span>
-                      <span>{isOver ? '✓ Melebihi target' : 'Sedang dalam proses'}</span>
-                    </div>
+              {dashboardData.whyCategories.map((cat, index) => (
+                <div key={index} className="space-y-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-body-sm font-medium text-on-surface">{cat.name}</span>
+                    <span className="text-label-xs text-on-surface-variant">{formatPrice(cat.revenue)}</span>
                   </div>
-                )
-              })}
+                  <div className="h-3 bg-surface-container-highest rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${cat.percent}%`, backgroundColor: cat.color }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-label-xs text-on-surface-variant">
+                    <span>{cat.percent}% dari total pendapatan</span>
+                    <span>{formatPrice(cat.revenue)}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

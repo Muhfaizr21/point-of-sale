@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/repositories"
+	"strings"
 )
 
 type CategoryService interface {
@@ -32,21 +34,21 @@ func (s *categoryService) GetCategoryByID(ctx context.Context, id uint) (*models
 }
 
 func (s *categoryService) CreateCategory(ctx context.Context, category *models.Category) error {
-	if category.Name == "" {
-		return models.NewAPIError(models.ErrInvalidInput, "Category name is required", 400)
+	if strings.TrimSpace(category.Name) == "" {
+		return models.NewAPIError(models.ErrInvalidInput, "Nama kategori wajib diisi", 400)
 	}
 	return s.repo.Create(ctx, category)
 }
 
 func (s *categoryService) UpdateCategory(ctx context.Context, category *models.Category) error {
-	if category.Name == "" {
-		return models.NewAPIError(models.ErrInvalidInput, "Category name is required", 400)
+	if strings.TrimSpace(category.Name) == "" {
+		return models.NewAPIError(models.ErrInvalidInput, "Nama kategori wajib diisi", 400)
 	}
 	existing, err := s.repo.GetByID(ctx, category.ID)
 	if err != nil {
 		return err
 	}
-	
+
 	oldName := existing.Name
 	newName := category.Name
 
@@ -55,7 +57,6 @@ func (s *categoryService) UpdateCategory(ctx context.Context, category *models.C
 		return err
 	}
 
-	// Sinkronisasi nama kategori di tabel produk jika namanya berubah
 	if oldName != newName {
 		err = s.productRepo.UpdateCategoryName(ctx, oldName, newName)
 		if err != nil {
@@ -66,6 +67,26 @@ func (s *categoryService) UpdateCategory(ctx context.Context, category *models.C
 	return nil
 }
 
+// #5: Prevent delete if products reference this category
 func (s *categoryService) DeleteCategory(ctx context.Context, id uint) error {
+	cat, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if cat == nil {
+		return models.NewAPIError(models.ErrNotFound, "Kategori tidak ditemukan", 404)
+	}
+
+	products, err := s.productRepo.GetAll(ctx)
+	if err != nil {
+		return err
+	}
+	for _, p := range products {
+		if p.Category == cat.Name {
+			return models.NewAPIError(models.ErrConflict,
+				fmt.Sprintf("Kategori '%s' masih digunakan oleh produk '%s'", cat.Name, p.Name), 409)
+		}
+	}
+
 	return s.repo.Delete(ctx, id)
 }

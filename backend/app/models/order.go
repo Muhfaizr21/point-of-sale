@@ -4,21 +4,46 @@ import (
 	"time"
 )
 
+var ValidPaymentMethods = map[string]bool{
+	"CASH":     true,
+	"CARD":     true,
+	"WALLET":   true,
+	"E_WALLET": true,
+	"TRANSFER": true,
+	"SPLIT":    true,
+}
+
+var ValidOrderStatuses = []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"}
+
+var ValidStatusTransitions = map[string][]string{
+	"COMPLETED": {"DIKEMAS"},
+	"DIKEMAS":   {"DIKIRIM", "COMPLETED"},
+	"DIKIRIM":   {"SELESAI", "DIKEMAS"},
+	"SELESAI":   {"DIKIRIM"},
+}
+
 type Order struct {
-	ID             uint        `gorm:"primaryKey;autoIncrement" json:"id"`
-	InvoiceNumber  string      `gorm:"type:varchar(100);uniqueIndex;not null" json:"invoice_number"`
-	Customer       string      `gorm:"type:varchar(255);default:'Umum'" json:"customer"`
-	Cashier        string      `gorm:"type:varchar(100);default:'Kasir'" json:"cashier"`
-	Subtotal       int         `gorm:"type:integer;not null" json:"subtotal"`
-	Tax            int         `gorm:"type:integer;not null" json:"tax"`
-	Discount       int         `gorm:"type:integer;default:0" json:"discount"`
-	Total          int         `gorm:"type:integer;not null" json:"total"`
-	PaymentMethod  string      `gorm:"type:varchar(50);not null" json:"payment_method"`
-	PaymentStatus  string      `gorm:"type:varchar(50);default:'COMPLETED'" json:"payment_status"`
-	OrderStatus    string      `gorm:"type:varchar(50);default:'COMPLETED'" json:"order_status"`
-	CreatedAt      time.Time   `json:"created_at"`
-	UpdatedAt      time.Time   `json:"updated_at"`
-	OrderItems     []OrderItem `gorm:"foreignKey:OrderID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"items"`
+	ID             uint            `gorm:"primaryKey;autoIncrement" json:"id"`
+	InvoiceNumber  string          `gorm:"type:varchar(100);uniqueIndex;not null" json:"invoice_number"`
+	CustomerID     *uint           `json:"customer_id,omitempty"`
+	Customer       string          `gorm:"type:varchar(255);default:'Umum'" json:"customer"`
+	Cashier        string          `gorm:"type:varchar(100);default:'Kasir'" json:"cashier"`
+	Subtotal       int             `gorm:"type:integer;not null" json:"subtotal"`
+	Tax            int             `gorm:"type:integer;not null" json:"tax"`
+	Discount       int             `gorm:"type:integer;default:0" json:"discount"`
+	PromoDiscount  int             `gorm:"type:integer;default:0" json:"promo_discount"`
+	Total          int             `gorm:"type:integer;not null" json:"total"`
+	PaymentMethod  string          `gorm:"type:varchar(50);not null" json:"payment_method"`
+	TaxRate        int             `gorm:"type:integer;default:0" json:"tax_rate"`
+	ServiceCharge  int             `gorm:"type:integer;default:0" json:"service_charge"`
+	RoundingDiff   int             `gorm:"type:integer;default:0" json:"rounding_diff"`
+	SplitPayments  []SplitPayment  `gorm:"serializer:json;type:jsonb;default:'[]'" json:"split_payments,omitempty"`
+	PaymentStatus  string          `gorm:"type:varchar(50);default:'COMPLETED'" json:"payment_status"`
+	OrderStatus    string          `gorm:"type:varchar(50);default:'COMPLETED'" json:"order_status"`
+	Notes          string          `gorm:"type:text" json:"notes"`
+	CreatedAt      time.Time       `json:"created_at"`
+	UpdatedAt      time.Time       `json:"updated_at"`
+	OrderItems     []OrderItem     `gorm:"foreignKey:OrderID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"items"`
 }
 
 type OrderItem struct {
@@ -27,8 +52,11 @@ type OrderItem struct {
 	ProductID     uint   `gorm:"not null" json:"product_id"`
 	ProductName   string `gorm:"type:varchar(255);not null" json:"product_name"`
 	VariationName string `gorm:"type:varchar(100)" json:"variation_name,omitempty"`
-	Price         int     `gorm:"type:integer;not null" json:"price"`
-	Quantity      int     `gorm:"type:integer;not null" json:"quantity"`
+	Price         int    `gorm:"type:integer;not null" json:"price"`
+	CostPrice     int    `gorm:"type:integer;default:0" json:"cost_price"`
+	Quantity      int    `gorm:"type:integer;not null" json:"quantity"`
+	IsBundle      bool   `gorm:"default:false" json:"is_bundle"`
+	BundleName    string `gorm:"type:varchar(255)" json:"bundle_name,omitempty"`
 	Product       Product `gorm:"foreignKey:ProductID" json:"product,omitempty"`
 }
 
@@ -38,11 +66,32 @@ type CreateOrderItemRequest struct {
 	Quantity      int    `json:"quantity"`
 }
 
+type SplitPaymentRequest struct {
+	Method string `json:"method"`
+	Amount int    `json:"amount"`
+}
+
 type CreateOrderRequest struct {
-	PaymentMethod string                   `json:"payment_method"`
-	Items         []CreateOrderItemRequest `json:"items"`
-	Customer      string                   `json:"customer,omitempty"`
-	Discount      int                      `json:"discount,omitempty"`
+	PaymentMethod     string                `json:"payment_method"`
+	SplitPayments     []SplitPaymentRequest `json:"split_payments,omitempty"`
+	Items             []CreateOrderItemRequest `json:"items"`
+	Bundles           []BundleOrderRequest  `json:"bundles,omitempty"`
+	Customer          string                `json:"customer,omitempty"`
+	CustomerID        *uint                 `json:"customer_id,omitempty"`
+	Discount          int                   `json:"discount,omitempty"`
+	TaxRate           int                   `json:"tax_rate,omitempty"`
+	ServiceChargeRate int                   `json:"service_charge_rate,omitempty"`
+	Rounding          bool                  `json:"rounding,omitempty"`
+	Notes             string                `json:"notes,omitempty"`
+}
+
+type UpdateOrderRequest struct {
+	OrderStatus *string `json:"order_status"`
+	Notes       *string `json:"notes"`
+}
+
+type RefundOrderRequest struct {
+	Notes string `json:"notes"`
 }
 
 // Query params for filtering orders
@@ -97,6 +146,11 @@ type PaymentMethodSales struct {
 	Count   int    `json:"count"`
 	Revenue int    `json:"revenue"`
 	Percent float64 `json:"percent"`
+}
+
+type SplitPayment struct {
+	Method string `json:"method"`
+	Amount int    `json:"amount"`
 }
 
 type TopProduct struct {

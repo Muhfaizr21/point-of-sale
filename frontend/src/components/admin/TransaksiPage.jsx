@@ -1,7 +1,33 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { Input } from './common/Input'
-import { Button } from './common/Button'
-import { orderService } from '../services/orderService'
+import { Input } from '../common/Input'
+import { Button } from '../common/Button'
+import { TopBar } from '../common/TopBar'
+
+const METHOD_VALUE_MAP = {
+  cash: 'CASH', transfer: 'TRANSFER', ewallet: 'E_WALLET', installment: 'INSTALLMENT',
+}
+
+const getPaymentMethods = () => {
+  try {
+    const raw = localStorage.getItem('paymentMethods')
+    if (!raw) return fallbackMethods()
+    const methods = JSON.parse(raw).filter(p => p.enabled)
+    if (methods.length === 0) return fallbackMethods()
+    return methods.map(p => ({
+      value: METHOD_VALUE_MAP[p.id] || p.id.toUpperCase(),
+      label: p.name,
+      icon: p.icon || 'payments',
+    }))
+  } catch { return fallbackMethods() }
+}
+
+const fallbackMethods = () => [
+  { value: 'CASH', label: 'Tunai', icon: 'payments' },
+]
+import { orderService } from '../../services/orderService'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import defaultLogo from '../../assets/pekalipan-logo.jpg'
 
 export function TransaksiPage({ onToggleSidebar }) {
   // Filter & Pagination states
@@ -127,17 +153,18 @@ export function TransaksiPage({ onToggleSidebar }) {
     }
   }, [getDateRange, searchQuery, selectedPaymentMethod, selectedStatus, pagination.limit])
 
-  // Initial fetch & listen for checkout events
+  const [checkoutVersion, setCheckoutVersion] = useState(0)
+  const fetchRef = useRef(fetchOrders)
+  fetchRef.current = fetchOrders
+
   useEffect(() => {
-    fetchOrders(1)
+    fetchRef.current(1)
+  }, [checkoutVersion])
 
-    // Listen for checkout success events
-    const handleCheckoutSuccess = () => {
-      fetchOrders(pagination.page)
-    }
-
-    window.addEventListener('checkout-success', handleCheckoutSuccess)
-    return () => window.removeEventListener('checkout-success', handleCheckoutSuccess)
+  useEffect(() => {
+    const handle = () => setCheckoutVersion(v => v + 1)
+    window.addEventListener('checkout-success', handle)
+    return () => window.removeEventListener('checkout-success', handle)
   }, [])
 
   // Refetch when filters change (with debounce for search)
@@ -173,22 +200,25 @@ export function TransaksiPage({ onToggleSidebar }) {
 
   // Get payment method label
   const getPaymentMethodLabel = (method) => {
-    const labels = {
-      'CASH': 'Tunai',
-      'CARD': 'Kartu',
-      'E-WALLET': 'E-Wallet',
-    }
-    return labels[method] || method || '-'
+    if (method === 'SPLIT') return 'Split'
+    const found = getPaymentMethods().find(p => p.value === method)
+    return found?.label || method || '-'
   }
 
   // Get payment method icon
   const getPaymentMethodIcon = (method) => {
-    const icons = {
-      'CASH': 'payments',
-      'CARD': 'credit_card',
-      'E-WALLET': 'qr_code',
-    }
-    return icons[method] || 'receipt'
+    if (method === 'SPLIT') return 'call_split'
+    const found = getPaymentMethods().find(p => p.value === method)
+    return found?.icon || 'receipt'
+  }
+
+  // Get split payment breakdown text
+  const getSplitSummary = (order) => {
+    if (!order.split_payments || order.split_payments.length === 0) return null
+    return order.split_payments
+      .filter(sp => sp.amount > 0)
+      .map(sp => `${getPaymentMethodLabel(sp.method)} ${formatPrice(sp.amount)}`)
+      .join(' + ')
   }
 
   // Get status label
@@ -223,34 +253,192 @@ export function TransaksiPage({ onToggleSidebar }) {
 
   // Handle print receipt
   const handlePrintReceipt = useCallback((order) => {
+    const storeName = (localStorage.getItem('storeName') || 'PEKALIPAN').toUpperCase()
+    const storeAddress = localStorage.getItem('storeAddress') || 'Jl. Pekalipan No. 99, Cirebon'
+    const storePhone = localStorage.getItem('storePhone') || '081234567890'
+    const receiptFooter = localStorage.getItem('receiptFooter') || 'Terima Kasih atas Kunjungan Anda'
+
+    const centerText = (text, width = 37) => {
+      if (!text) return ''
+      const len = text.length
+      if (len >= width) return text.substring(0, width)
+      const leftPad = Math.floor((width - len) / 2)
+      return ' '.repeat(leftPad) + text
+    }
+
     const printContent = `
-      =====================================
-              KOPI PEKALIPAN CIREBON
-      =====================================
-      Invoice  : ${order.invoice_number}
-      Tanggal  : ${formatDate(order.created_at)}
-      Kasir    : ${order.cashier || 'Admin'}
-      -------------------------------------
-      Pelanggan: ${order.customer || 'Umum'}
-      -------------------------------------
-      ITEM                QTY    HARGA
-      ${(order.items || []).map(item =>
-        `${(item.product_name || item.name || '').padEnd(18)} ${(item.quantity || 0).toString().padStart(3)} ${formatPrice(item.price || 0).padStart(10)}`
-      ).join('\n')}
-      -------------------------------------
-      Subtotal           ${formatPrice(order.subtotal || 0)}
-      Pajak (10%)        ${formatPrice(order.tax || 0)}
-      Diskon             ${formatPrice(order.discount || 0)}
-      =====================================
-      TOTAL              ${formatPrice(order.total || 0)}
-      Bayar (${getPaymentMethodLabel(order.payment_method)})
-      =====================================
-            Terima Kasih
-      =====================================
+=====================================
+${centerText(storeName)}
+${centerText(storeAddress)}
+${centerText('Telp: ' + storePhone)}
+=====================================
+Invoice  : ${order.invoice_number}
+Tanggal  : ${formatDate(order.created_at)}
+Kasir    : ${order.cashier || 'Admin'}
+-------------------------------------
+Pelanggan: ${order.customer || 'Umum'}
+-------------------------------------
+ITEM                QTY    HARGA
+${(order.items || []).map(item =>
+  `${(item.product_name || item.name || '').padEnd(18)} ${(item.quantity || 0).toString().padStart(3)} ${formatPrice(item.price || 0).padStart(10)}`
+).join('\n')}
+-------------------------------------
+Subtotal           ${formatPrice(order.subtotal || 0)}
+Pajak (10%)        ${formatPrice(order.tax || 0)}
+Diskon Manual      ${formatPrice(order.discount || 0)}
+Promo Diskon       ${formatPrice(order.promo_discount || 0)}
+=====================================
+TOTAL              ${formatPrice(order.total || 0)}
+Bayar (${getPaymentMethodLabel(order.payment_method)})
+=====================================
+${centerText(receiptFooter)}
+=====================================
     `
     console.log('Print receipt:', printContent)
     alert('Struk akan dicetak (fitur cetak dalam pengembangan)')
   }, [])
+
+  // Handle Download PDF
+  const handleDownloadPDF = async () => {
+    try {
+      setLoading(true)
+      const doc = new jsPDF()
+      const storeName = (localStorage.getItem('storeName') || 'PEKALIPAN').toUpperCase()
+      const storeAddress = localStorage.getItem('storeAddress') || 'Jl. Pekalipan No. 99, Cirebon'
+      const storePhone = localStorage.getItem('storePhone') || '081234567890'
+      const storeLogo = localStorage.getItem('storeLogo')
+
+      // 1. Add Logo
+      try {
+        let logoData = storeLogo;
+        if (!logoData) {
+          const img = new Image()
+          img.src = defaultLogo
+          await new Promise((resolve) => {
+            img.onload = () => {
+              const canvas = document.createElement('canvas')
+              canvas.width = img.width
+              canvas.height = img.height
+              const ctx = canvas.getContext('2d')
+              ctx.drawImage(img, 0, 0)
+              logoData = canvas.toDataURL('image/jpeg')
+              resolve()
+            }
+            img.onerror = () => resolve()
+          })
+        }
+
+        if (logoData) {
+          // (image, format, x, y, width, height)
+          doc.addImage(logoData, 'JPEG', 14, 10, 20, 20)
+        }
+      } catch (e) {
+        console.error('Error adding logo to PDF', e)
+      }
+
+      // 2. Add Header Text
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text(storeName, 40, 16)
+      
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.text(storeAddress, 40, 22)
+      doc.text(`Telp: ${storePhone}`, 40, 28)
+
+      // 3. Add Title & Subtitle
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.text('LAPORAN KEUANGAN & TRANSAKSI', 14, 45)
+
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+
+      // 4. Fetch all data for the current filter
+      const { dateFrom, dateTo } = getDateRange()
+      
+      let periodText = 'Semua Waktu'
+      if (dateFrom && dateTo) {
+        if (dateFrom === dateTo) {
+          periodText = new Date(dateFrom).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+        } else {
+          const fromStr = new Date(dateFrom).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+          const toStr = new Date(dateTo).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+          periodText = `${fromStr} - ${toStr}`
+        }
+      }
+
+      doc.text(`Periode: ${periodText}`, 14, 52)
+      doc.text(`Status: ${selectedStatus ? getStatusLabel(selectedStatus) : 'Semua'} | Metode: ${selectedPaymentMethod ? getPaymentMethodLabel(selectedPaymentMethod) : 'Semua'}`, 14, 58)
+
+      const allOrdersResult = await orderService.getOrders({
+        page: 1,
+        limit: 1000, // fetch up to 1000 for PDF
+        search: searchQuery,
+        paymentMethod: selectedPaymentMethod,
+        status: selectedStatus,
+        dateFrom,
+        dateTo,
+        sortBy: 'created_at',
+        sortOrder: 'desc',
+      })
+      
+      const allOrders = allOrdersResult.data || []
+      doc.text(`Total Transaksi: ${allOrders.length}`, 14, 64)
+
+      // 5. Build Table Data
+      const tableColumn = ["No", "Invoice", "Tanggal", "Pelanggan", "Item", "Metode", "Status", "Total"]
+      const tableRows = []
+      let totalRevenue = 0
+
+      allOrders.forEach((order, index) => {
+        const rowData = [
+          index + 1,
+          order.invoice_number,
+          formatDate(order.created_at),
+          order.customer || 'Umum',
+          order.items?.length || 0,
+          getPaymentMethodLabel(order.payment_method),
+          getStatusLabel(order.order_status || order.payment_status),
+          formatPrice(order.total)
+        ]
+        tableRows.push(rowData)
+        if (order.order_status === 'COMPLETED' || order.payment_status === 'COMPLETED') {
+           totalRevenue += order.total || 0
+        }
+      })
+
+      // 6. Generate AutoTable
+      autoTable(doc, {
+        startY: 70,
+        head: [tableColumn],
+        body: tableRows,
+        theme: 'striped',
+        headStyles: { fillColor: [185, 28, 28] }, // Primary Color (red-700 approx)
+        styles: { fontSize: 8 },
+        columnStyles: {
+          7: { halign: 'right' } // Right align the Total column
+        }
+      })
+
+      // 7. Add Summary Footer
+      const finalY = doc.lastAutoTable?.finalY || 70
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Total Pendapatan (Selesai):', 14, finalY + 10)
+      doc.text(formatPrice(totalRevenue), 65, finalY + 10)
+
+      // 8. Save PDF
+      doc.save(`Laporan_Transaksi_${storeName.replace(/\\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`)
+
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      alert('Gagal menghasilkan PDF Laporan')
+    } finally {
+      // Refresh current page view to reset loading state properly
+      fetchOrders(pagination.page)
+    }
+  }
 
   // Generate page numbers for pagination
   const getPageNumbers = useCallback(() => {
@@ -289,28 +477,30 @@ export function TransaksiPage({ onToggleSidebar }) {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-surface-container-low pb-[72px]">
       {/* Top Header */}
-      <header className="flex justify-between items-center px-lg py-md h-[72px] w-full border-b border-outline-variant bg-surface z-20">
-        <div className="flex items-center gap-md">
-          <button
-            type="button"
-            onClick={onToggleSidebar}
-            className="lg:hidden p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-highest transition-colors cursor-pointer mr-2 flex items-center justify-center"
-          >
-            <span className="material-symbols-outlined">menu</span>
-          </button>
-          <h2 className="text-headline-md text-on-surface font-semibold">Riwayat Transaksi</h2>
-        </div>
-        <div className="flex items-center gap-md">
-          <Button
-            variant="outline"
-            onClick={() => fetchOrders(pagination.page)}
-            className="hidden sm:flex py-2 px-3"
-          >
-            <span className="material-symbols-outlined text-[20px]">refresh</span>
-            <span className="hidden md:inline">Refresh</span>
-          </Button>
-        </div>
-      </header>
+      <TopBar
+        title="Riwayat Transaksi"
+        onToggleSidebar={onToggleSidebar}
+        rightContent={
+          <div className="flex items-center gap-md">
+            <Button
+              variant="outline"
+              onClick={handleDownloadPDF}
+              className="hidden sm:flex py-2 px-3 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+            >
+              <span className="material-symbols-outlined text-[20px]">picture_as_pdf</span>
+              <span className="hidden md:inline font-medium">Download PDF</span>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => fetchOrders(pagination.page)}
+              className="hidden sm:flex py-2 px-3"
+            >
+              <span className="material-symbols-outlined text-[20px]">refresh</span>
+              <span className="hidden md:inline">Refresh</span>
+            </Button>
+          </div>
+        }
+      />
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-lg hide-scrollbar">
@@ -382,9 +572,9 @@ export function TransaksiPage({ onToggleSidebar }) {
                 className="w-full px-md py-sm border border-outline-variant bg-surface-container-high rounded-lg text-body-md font-medium text-on-surface cursor-pointer focus:border-primary outline-none"
               >
                 <option value="">Semua Metode</option>
-                <option value="CASH">Tunai</option>
-                <option value="CARD">Kartu</option>
-                <option value="E-WALLET">E-Wallet</option>
+                {getPaymentMethods().map(pm => (
+                  <option key={pm.value} value={pm.value}>{pm.label}</option>
+                ))}
               </select>
             </div>
 
@@ -522,12 +712,15 @@ export function TransaksiPage({ onToggleSidebar }) {
                       </td>
                       {/* Payment Method */}
                       <td className="p-md hidden lg:table-cell">
-                        <div className="flex items-center gap-xs">
+                        <div className="flex items-center gap-xs" title={getSplitSummary(order) || ''}>
                           <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
                             {getPaymentMethodIcon(order.payment_method)}
                           </span>
                           <span className="text-label-sm">{getPaymentMethodLabel(order.payment_method)}</span>
                         </div>
+                        {order.payment_method === 'SPLIT' && getSplitSummary(order) && (
+                          <p className="text-label-xs text-on-surface-variant mt-0.5">{getSplitSummary(order)}</p>
+                        )}
                       </td>
                       {/* Status */}
                       <td className="p-md hidden lg:table-cell">
@@ -685,6 +878,16 @@ export function TransaksiPage({ onToggleSidebar }) {
                     </span>
                     <span className="text-body-md font-medium">{getPaymentMethodLabel(selectedOrder.payment_method)}</span>
                   </div>
+                  {selectedOrder.payment_method === 'SPLIT' && selectedOrder.split_payments?.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {selectedOrder.split_payments.filter(sp => sp.amount > 0).map((sp, i) => (
+                        <div key={i} className="flex justify-between text-label-sm pl-6">
+                          <span className="text-on-surface-variant">{getPaymentMethodLabel(sp.method)}</span>
+                          <span className="font-medium text-on-surface">{formatPrice(sp.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -730,8 +933,14 @@ export function TransaksiPage({ onToggleSidebar }) {
                 </div>
                 {(selectedOrder.discount || 0) > 0 && (
                   <div className="flex justify-between text-body-md text-green-600">
-                    <span>Diskon</span>
+                    <span>Diskon Manual</span>
                     <span>-{formatPrice(selectedOrder.discount)}</span>
+                  </div>
+                )}
+                {(selectedOrder.promo_discount || 0) > 0 && (
+                  <div className="flex justify-between text-body-md text-amber-600">
+                    <span>Promo Diskon</span>
+                    <span>-{formatPrice(selectedOrder.promo_discount)}</span>
                   </div>
                 )}
                 <div className="border-t border-outline-variant pt-sm mt-sm flex justify-between items-end">

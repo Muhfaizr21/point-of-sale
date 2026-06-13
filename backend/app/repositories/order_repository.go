@@ -13,6 +13,8 @@ type OrderRepository interface {
 	GetAll(ctx context.Context) ([]models.Order, error)
 	GetFiltered(ctx context.Context, query *models.OrderQuery) ([]models.Order, int64, error)
 	GetByID(ctx context.Context, id uint) (*models.Order, error)
+	GetByCustomerID(ctx context.Context, customerID uint) ([]models.Order, error)
+	Update(ctx context.Context, order *models.Order) error
 }
 
 type orderRepository struct {
@@ -105,4 +107,14 @@ func (r *orderRepository) GetFiltered(ctx context.Context, query *models.OrderQu
 		Find(&orders).Error
 
 	return orders, total, err
+}
+
+func (r *orderRepository) GetByCustomerID(ctx context.Context, customerID uint) ([]models.Order, error) {
+	var orders []models.Order
+	err := r.db.WithContext(ctx).Preload("OrderItems").Where("customer_id = ?", customerID).Order("created_at desc").Find(&orders).Error
+	return orders, err
+}
+
+func (r *orderRepository) Update(ctx context.Context, order *models.Order) error {
+	return r.db.WithContext(ctx).Save(order).Error
 }
