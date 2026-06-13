@@ -21,6 +21,7 @@ export function ProductPage({
   
   // Form state
   const [formName, setFormName] = useState('')
+  const [formSku, setFormSku] = useState('')
   const [formCategory, setFormCategory] = useState('Makanan')
   const [formPrice, setFormPrice] = useState('')
   const [formCostPrice, setFormCostPrice] = useState('')
@@ -72,6 +73,7 @@ export function ProductPage({
   const handleOpenAdd = () => {
     setEditingProduct(null)
     setFormName('')
+    setFormSku('')
     setFormCategory(categoryNames.find(c => c !== 'Semua') || '')
     setFormPrice('')
     setFormCostPrice('')
@@ -89,6 +91,7 @@ export function ProductPage({
   const handleOpenEdit = (product) => {
     setEditingProduct(product)
     setFormName(product.name)
+    setFormSku(product.sku || '')
     setFormCategory(product.category)
     setFormPrice(product.price.toString())
     setFormCostPrice(product.cost_price?.toString() || '')
@@ -154,6 +157,7 @@ export function ProductPage({
       const productData = {
         id: editingProduct ? editingProduct.id : undefined,
         name: formName,
+        sku: formSku,
         category: formCategory,
         price: basePrice,
         cost_price: parseInt(formCostPrice, 10) || 0,
@@ -295,6 +299,19 @@ export function ProductPage({
                   </th>
                   <th 
                     className="p-md font-semibold cursor-pointer select-none hover:text-primary transition-colors"
+                    onClick={() => handleSort('sku')}
+                  >
+                    <div className="flex items-center gap-xs">
+                      SKU
+                      {sortField === 'sku' && (
+                        <span className="material-symbols-outlined text-[16px] font-bold">
+                          {sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="p-md font-semibold cursor-pointer select-none hover:text-primary transition-colors"
                     onClick={() => handleSort('category')}
                   >
                     <div className="flex items-center gap-xs">
@@ -343,7 +360,7 @@ export function ProductPage({
               <tbody className="divide-y divide-surface-variant">
                 {loading ? (
                   <tr>
-                    <td colSpan="6" className="p-xl text-center text-primary">
+                    <td colSpan="8" className="p-xl text-center text-primary">
                       <div className="flex justify-center items-center gap-sm">
                         <span className="material-symbols-outlined animate-spin text-[32px]">sync</span>
                         <span className="text-body-lg font-medium">Memuat data produk...</span>
@@ -352,14 +369,14 @@ export function ProductPage({
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan="6" className="p-xl text-center text-error">
+                    <td colSpan="8" className="p-xl text-center text-error">
                       <span className="material-symbols-outlined text-[48px] block mb-xs">error</span>
                       <p className="text-body-lg font-medium">Gagal memuat produk: {error}</p>
                     </td>
                   </tr>
                 ) : processedList.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="p-xl text-center text-on-surface-variant">
+                    <td colSpan="8" className="p-xl text-center text-on-surface-variant">
                       <span className="material-symbols-outlined text-[48px] block mb-xs">inventory_2</span>
                       Belum ada data produk yang cocok.
                     </td>
@@ -383,6 +400,8 @@ export function ProductPage({
                       </td>
                       {/* Name */}
                       <td className="p-md font-medium">{product.name}</td>
+                      {/* SKU */}
+                      <td className="p-md font-mono text-on-surface-variant text-sm">{product.sku || '-'}</td>
                       {/* Category */}
                       <td className="p-md">
                         <span className="px-3 py-1 bg-surface-container-high border border-outline-variant/30 rounded-full text-label-sm">
@@ -525,16 +544,28 @@ export function ProductPage({
               )}
 
               <form id="productForm" onSubmit={handleSubmit} className="space-y-xl">
-                <div className="space-y-2">
-                  <label className="text-label-lg font-semibold text-on-surface-variant block">Nama Produk</label>
-                  <input
-                    type="text"
-                    required
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    placeholder="Contoh: Kopi Susu Aren"
-                    className="w-full px-4 py-3 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-lg font-body-lg text-on-surface placeholder:text-on-surface-variant"
-                  />
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="space-y-2 flex-1">
+                    <label className="text-label-lg font-semibold text-on-surface-variant block">Nama Produk</label>
+                    <input
+                      type="text"
+                      required
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      placeholder="Contoh: Kopi Susu Aren"
+                      className="w-full px-4 py-3 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-lg font-body-lg text-on-surface placeholder:text-on-surface-variant"
+                    />
+                  </div>
+                  <div className="space-y-2 flex-1">
+                    <label className="text-label-lg font-semibold text-on-surface-variant block">SKU (Opsional)</label>
+                    <input
+                      type="text"
+                      value={formSku}
+                      onChange={(e) => setFormSku(e.target.value)}
+                      placeholder="Contoh: KPS-01"
+                      className="w-full px-4 py-3 border border-outline-variant bg-surface-container-high focus:border-primary focus:ring-0 rounded-lg text-body-lg font-body-lg text-on-surface placeholder:text-on-surface-variant"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">

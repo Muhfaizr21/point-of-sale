@@ -139,6 +139,7 @@ export function DashboardPage({ onToggleSidebar }) {
   const [dateRange, setDateRange] = useState('week')
   const [analyticsData, setAnalyticsData] = useState(null)
   const [recentOrders, setRecentOrders] = useState([])
+  const [undeliveredOrders, setUndeliveredOrders] = useState([])
   const [lastUpdate, setLastUpdate] = useState(new Date())
 
   const [currentTarget, setCurrentTarget] = useState({ revenue_target: 1000000, transaction_target: 10 })
@@ -175,6 +176,16 @@ export function DashboardPage({ onToggleSidebar }) {
       if (ordersData && ordersData.data) {
         setRecentOrders(ordersData.data)
       }
+      
+      // Fetch undelivered orders
+      const allOrders = await orderService.getOrders({ limit: 100, sortBy: 'created_at', sortOrder: 'desc' })
+      if (allOrders && allOrders.data) {
+        const undelivered = allOrders.data.filter(
+          order => order.order_status === 'COMPLETED' || order.order_status === 'DIKEMAS'
+        )
+        setUndeliveredOrders(undelivered)
+      }
+
       await fetchTargets()
       setLastUpdate(new Date())
     } catch (error) {
@@ -186,6 +197,26 @@ export function DashboardPage({ onToggleSidebar }) {
 
   useEffect(() => {
     fetchData()
+    window.addEventListener('checkout-success', fetchData)
+    const interval = setInterval(fetchData, 30000)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchData()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      window.removeEventListener('checkout-success', fetchData)
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [fetchData])
+
+  const handleMarkAsShipped = useCallback(async (orderId) => {
+    try {
+      await orderService.updateOrder(orderId, { order_status: 'DIKIRIM' })
+      await fetchData()
+    } catch (error) {
+      alert(`Gagal mengirim pesanan: ${error.message}`)
+    }
   }, [fetchData])
 
   // Generate comprehensive dashboard data from API
@@ -619,7 +650,70 @@ export function DashboardPage({ onToggleSidebar }) {
               )}
             </div>
           </div>
-          <div className="hidden lg:block"></div> {/* Empty right column for balance */}
+          
+          {/* Pesanan Belum Diantar */}
+          <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden flex flex-col">
+            <div className="p-md border-b border-outline-variant bg-surface-container-lowest">
+              <h3 className="text-body-lg font-semibold text-on-surface flex items-center gap-sm">
+                <span className="material-symbols-outlined text-primary text-[20px]">local_shipping</span>
+                Pesanan Belum Diantar
+                {undeliveredOrders.length > 0 && (
+                  <span className="ml-xs bg-error text-on-error text-[11px] font-bold px-1.5 py-0.5 rounded-full">
+                    {undeliveredOrders.length}
+                  </span>
+                )}
+              </h3>
+              <p className="text-label-sm text-on-surface-variant">Daftar pesanan baru atau dikemas yang belum dikirim</p>
+            </div>
+            <div className="p-md space-y-sm max-h-[320px] overflow-y-auto hide-scrollbar flex-1">
+              {undeliveredOrders.map((order) => {
+                let itemsCount = 0;
+                if (order.items) {
+                   itemsCount = order.items.reduce((acc, item) => acc + item.quantity, 0);
+                }
+                return (
+                  <div key={order.id} className="flex items-center justify-between gap-md p-2 hover:bg-surface-container-low rounded-lg transition-colors border border-outline-variant/30">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-sm">
+                        <span className="text-body-sm font-bold text-primary truncate">{order.invoice_number}</span>
+                        <span className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full uppercase ${
+                          order.order_status === 'DIKEMAS' 
+                            ? 'bg-secondary-container text-on-secondary-container' 
+                            : 'bg-surface-variant text-on-surface-variant'
+                        }`}>
+                          {order.order_status === 'COMPLETED' ? 'POS' : order.order_status}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-label-xs text-on-surface-variant mt-1">
+                        <span className="truncate max-w-[120px]" title={order.customer || 'Umum'}>{order.customer || 'Umum'} ({itemsCount} item)</span>
+                        <span>{new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-sm shrink-0">
+                      <span className="text-body-sm font-semibold text-on-surface font-data-mono">
+                        {formatPrice(order.total)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleMarkAsShipped(order.id)}
+                        className="p-1 text-primary hover:bg-primary/10 rounded-full cursor-pointer flex items-center justify-center transition-colors outline-none"
+                        title="Kirim Pesanan"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">local_shipping</span>
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+              {undeliveredOrders.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-lg text-center h-full min-h-[180px]">
+                  <span className="material-symbols-outlined text-[36px] text-green-500 mb-xs filled-icon">check_circle</span>
+                  <p className="text-body-sm font-semibold text-on-surface">Semua Terkirim</p>
+                  <p className="text-label-xs text-on-surface-variant">Tidak ada pesanan yang tertunda</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* ============================================ */}

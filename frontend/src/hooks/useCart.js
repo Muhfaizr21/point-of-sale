@@ -155,12 +155,12 @@ export function useCart() {
   }, [cart])
 
   const discountAmount = useMemo(() => {
-    return Math.min(discount, subtotal)
+    // Cap at 50% of subtotal (sync with backend)
+    const maxDisc = Math.floor(subtotal / 2)
+    return Math.min(discount, maxDisc)
   }, [discount, subtotal])
 
-  const total = useMemo(() => {
-    return Math.max(0, subtotal - discountAmount)
-  }, [subtotal, discountAmount])
+
 
   return {
     cart,
@@ -184,6 +184,5 @@ export function useCart() {
     setSplitPayments,
     subtotal,
     discountAmount,
-    total,
   }
 }

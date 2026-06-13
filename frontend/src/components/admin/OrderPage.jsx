@@ -4,7 +4,6 @@ import { orderService } from '../../services/orderService'
 
 const STATUS_COLORS = {
   'COMPLETED': 'bg-primary-container text-on-primary-container',
-  'MENUNGGU': 'bg-error-container text-on-error-container',
   'DIKEMAS': 'bg-secondary-container text-on-secondary-container',
   'DIKIRIM': 'bg-tertiary-container text-on-tertiary-container',
   'SELESAI': 'bg-primary-container text-on-primary-container',
@@ -20,7 +19,7 @@ export function OrderPage({ onToggleSidebar }) {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
-  const PER_PAGE = 10
+  const [limit, setLimit] = useState(10)
 
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -32,7 +31,7 @@ export function OrderPage({ onToggleSidebar }) {
     try {
       const response = await orderService.getOrders({
         page,
-        limit: PER_PAGE,
+        limit,
         search: searchQuery,
         status: statusFilter,
         dateFrom,
@@ -50,12 +49,12 @@ export function OrderPage({ onToggleSidebar }) {
     } finally {
       setLoading(false)
     }
-  }, [page, searchQuery, statusFilter, dateFrom, dateTo])
+  }, [page, limit, searchQuery, statusFilter, dateFrom, dateTo])
 
   useEffect(() => { fetchData() }, [fetchData])
   
   // Reset page when filters change
-  useEffect(() => { setPage(1) }, [searchQuery, statusFilter, dateFrom, dateTo])
+  useEffect(() => { setPage(1) }, [searchQuery, statusFilter, dateFrom, dateTo, limit])
 
   const openNotesModal = (order) => {
     setSelectedOrder(order)
@@ -208,8 +207,7 @@ export function OrderPage({ onToggleSidebar }) {
             
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-4 py-2 border border-outline-variant bg-surface rounded-lg text-body-md text-on-surface outline-none cursor-pointer">
               <option value="">Semua Status</option>
-              <option value="COMPLETED">Completed (POS)</option>
-              <option value="MENUNGGU">Menunggu</option>
+              <option value="COMPLETED">Selesai (POS)</option>
               <option value="DIKEMAS">Dikemas</option>
               <option value="DIKIRIM">Dikirim</option>
               <option value="SELESAI">Selesai</option>
@@ -220,6 +218,14 @@ export function OrderPage({ onToggleSidebar }) {
               <span className="text-on-surface-variant">-</span>
               <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="px-3 py-2 border border-outline-variant bg-surface rounded-lg text-body-md text-on-surface outline-none" />
             </div>
+
+            <select value={limit} onChange={e => setLimit(Number(e.target.value))} className="px-4 py-2 border border-outline-variant bg-surface rounded-lg text-body-md text-on-surface outline-none cursor-pointer">
+              <option value="5">Tampilkan 5</option>
+              <option value="10">Tampilkan 10</option>
+              <option value="20">Tampilkan 20</option>
+              <option value="50">Tampilkan 50</option>
+              <option value="100">Tampilkan 100</option>
+            </select>
           </div>
           
           <span className="text-label-sm text-on-surface-variant shrink-0">{totalItems} pesanan</span>
@@ -279,7 +285,7 @@ export function OrderPage({ onToggleSidebar }) {
                             <input 
                               type="checkbox" 
                               className="w-4 h-4 rounded text-primary border-outline accent-primary cursor-pointer"
-                              checked={order.order_status === 'DIKIRIM' || order.order_status === 'SELESAI' || order.order_status === 'COMPLETED'}
+                              checked={order.order_status === 'DIKIRIM' || order.order_status === 'SELESAI'}
                               onChange={(e) => handleStatusChange(order.id, order.order_status, e.target.checked ? 'DIKIRIM' : 'COMPLETED')}
                             />
                             <span>Tandai Dikirim</span>
@@ -288,7 +294,7 @@ export function OrderPage({ onToggleSidebar }) {
                             <input 
                               type="checkbox" 
                               className="w-4 h-4 rounded text-primary border-outline accent-primary cursor-pointer"
-                              checked={order.order_status === 'SELESAI' || order.order_status === 'COMPLETED'}
+                              checked={order.order_status === 'SELESAI'}
                               onChange={(e) => handleStatusChange(order.id, order.order_status, e.target.checked ? 'SELESAI' : 'DIKIRIM')}
                             />
                             <span>Tandai Selesai</span>
@@ -313,7 +319,7 @@ export function OrderPage({ onToggleSidebar }) {
 
         {totalItems > 0 && (
           <div className="mt-md flex items-center justify-between">
-            <span className="text-body-sm text-on-surface-variant">Menampilkan {((page-1)*PER_PAGE)+1}-{Math.min(page*PER_PAGE, totalItems)} dari {totalItems}</span>
+            <span className="text-body-sm text-on-surface-variant">Menampilkan {((page-1)*limit)+1}-{Math.min(page*limit, totalItems)} dari {totalItems}</span>
             <div className="flex items-center gap-1">
               <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-container-highest disabled:opacity-50 cursor-pointer"><span className="material-symbols-outlined text-[20px]">chevron_left</span></button>
               {Array.from({length: totalPages}).map((_, i) => { 

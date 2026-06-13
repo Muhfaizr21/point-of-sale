@@ -9,6 +9,7 @@ import (
 
 type CustomerService interface {
 	GetAll(ctx context.Context) ([]models.Customer, error)
+	GetAllPaginated(ctx context.Context, page, limit int, search string) ([]models.Customer, int64, error)
 	GetByID(ctx context.Context, id uint) (*models.Customer, error)
 	Create(ctx context.Context, req *models.CreateCustomerRequest) (*models.Customer, error)
 	Update(ctx context.Context, id uint, req *models.UpdateCustomerRequest) (*models.Customer, error)
@@ -27,6 +28,10 @@ func NewCustomerService(repo repositories.CustomerRepository, orderRepo reposito
 
 func (s *customerService) GetAll(ctx context.Context) ([]models.Customer, error) {
 	return s.repo.GetAll(ctx)
+}
+
+func (s *customerService) GetAllPaginated(ctx context.Context, page, limit int, search string) ([]models.Customer, int64, error) {
+	return s.repo.GetAllPaginated(ctx, page, limit, search)
 }
 
 func (s *customerService) GetByID(ctx context.Context, id uint) (*models.Customer, error) {

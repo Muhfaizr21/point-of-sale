@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"point-of-sale/backend/app/handlers"
@@ -50,6 +52,7 @@ func main() {
 	supplierRepo := repositories.NewSupplierRepository(DB)
 	customerRepo := repositories.NewCustomerRepository(DB)
 	stockLogRepo := repositories.NewStockLogRepository(DB)
+	expenseRepo := repositories.NewExpenseRepository(DB)
 
 	// Services
 	authService := services.NewAuthService(userRepo)
@@ -63,6 +66,7 @@ func main() {
 	supplierSvc := services.NewSupplierService(supplierRepo)
 	customerSvc := services.NewCustomerService(customerRepo, orderRepo)
 	reportService := services.NewReportService(DB)
+	expenseService := services.NewExpenseService(expenseRepo)
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -78,6 +82,7 @@ func main() {
 	customerHandler := handlers.NewCustomerHandler(customerSvc)
 	stockHandler := handlers.NewStockHandler(DB, productRepo, stockLogRepo)
 	reportHandler := handlers.NewReportHandler(reportService)
+	expenseHandler := handlers.NewExpenseHandler(expenseService)
 	settingHandler := handlers.NewSettingHandler(DB)
 
 	// #17: Rate limiter (60 req/min for login, 300 req/min for others)
@@ -93,11 +98,33 @@ func main() {
 	// Protected endpoints
 	mux.HandleFunc("GET /api/auth/me", authHandler.Me)
 	mux.HandleFunc("POST /api/auth/logout", authHandler.Logout)
-	mux.HandleFunc("GET /api/users", authHandler.GetAll)
-	mux.HandleFunc("POST /api/users", authHandler.Create)
-	mux.HandleFunc("PUT /api/users/{id}", authHandler.Update)
-	mux.HandleFunc("DELETE /api/users/{id}", authHandler.Delete)
+	// Owner-only (wrapped with RequireOwner)
+	mux.Handle("GET /api/users", middleware.RequireOwner(http.HandlerFunc(authHandler.GetAll)))
+	mux.Handle("POST /api/users", middleware.RequireOwner(http.HandlerFunc(authHandler.Create)))
+	mux.Handle("PUT /api/users/{id}", middleware.RequireOwner(http.HandlerFunc(authHandler.Update)))
+	mux.Handle("DELETE /api/users/{id}", middleware.RequireOwner(http.HandlerFunc(authHandler.Delete)))
 
+	mux.Handle("POST /api/products", middleware.RequireOwner(http.HandlerFunc(productHandler.Create)))
+	mux.Handle("PUT /api/products/{id}", middleware.RequireOwner(http.HandlerFunc(productHandler.Update)))
+	mux.Handle("DELETE /api/products/{id}", middleware.RequireOwner(http.HandlerFunc(productHandler.Delete)))
+
+	mux.Handle("POST /api/categories", middleware.RequireOwner(http.HandlerFunc(categoryHandler.Create)))
+	mux.Handle("PUT /api/categories/{id}", middleware.RequireOwner(http.HandlerFunc(categoryHandler.Update)))
+	mux.Handle("DELETE /api/categories/{id}", middleware.RequireOwner(http.HandlerFunc(categoryHandler.Delete)))
+
+	mux.Handle("DELETE /api/bundles/{id}", middleware.RequireOwner(http.HandlerFunc(bundleHandler.Delete)))
+
+	mux.Handle("POST /api/promos", middleware.RequireOwner(http.HandlerFunc(promoHandler.Create)))
+	mux.Handle("PUT /api/promos/{id}", middleware.RequireOwner(http.HandlerFunc(promoHandler.Update)))
+	mux.Handle("DELETE /api/promos/{id}", middleware.RequireOwner(http.HandlerFunc(promoHandler.Delete)))
+
+	mux.Handle("POST /api/suppliers", middleware.RequireOwner(http.HandlerFunc(supplierHandler.Create)))
+	mux.Handle("PUT /api/suppliers/{id}", middleware.RequireOwner(http.HandlerFunc(supplierHandler.Update)))
+	mux.Handle("DELETE /api/suppliers/{id}", middleware.RequireOwner(http.HandlerFunc(supplierHandler.Delete)))
+
+	mux.Handle("DELETE /api/customers/{id}", middleware.RequireOwner(http.HandlerFunc(customerHandler.Delete)))
+
+	// Cashier + Owner accessible
 	mux.HandleFunc("POST /api/upload", uploadHandler.UploadImage)
 	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 
@@ -108,14 +135,8 @@ func main() {
 
 	mux.HandleFunc("GET /api/products", productHandler.GetAll)
 	mux.HandleFunc("GET /api/products/{id}", productHandler.GetByID)
-	mux.HandleFunc("POST /api/products", productHandler.Create)
-	mux.HandleFunc("PUT /api/products/{id}", productHandler.Update)
-	mux.HandleFunc("DELETE /api/products/{id}", productHandler.Delete)
 
 	mux.HandleFunc("GET /api/categories", categoryHandler.GetAll)
-	mux.HandleFunc("POST /api/categories", categoryHandler.Create)
-	mux.HandleFunc("PUT /api/categories/{id}", categoryHandler.Update)
-	mux.HandleFunc("DELETE /api/categories/{id}", categoryHandler.Delete)
 
 	mux.HandleFunc("POST /api/orders", orderHandler.Checkout)
 	mux.HandleFunc("GET /api/orders", orderHandler.GetAll)
@@ -129,37 +150,38 @@ func main() {
 	mux.HandleFunc("GET /api/bundles/{id}", bundleHandler.GetByID)
 	mux.HandleFunc("POST /api/bundles", bundleHandler.Create)
 	mux.HandleFunc("PUT /api/bundles/{id}", bundleHandler.Update)
-	mux.HandleFunc("DELETE /api/bundles/{id}", bundleHandler.Delete)
 
 	mux.HandleFunc("GET /api/promos", promoHandler.GetAll)
+	mux.HandleFunc("GET /api/promos/active", promoHandler.GetActive)
 	mux.HandleFunc("GET /api/promos/{id}", promoHandler.GetByID)
-	mux.HandleFunc("POST /api/promos", promoHandler.Create)
-	mux.HandleFunc("PUT /api/promos/{id}", promoHandler.Update)
-	mux.HandleFunc("DELETE /api/promos/{id}", promoHandler.Delete)
 
 	mux.HandleFunc("GET /api/suppliers", supplierHandler.GetAll)
 	mux.HandleFunc("GET /api/suppliers/{id}", supplierHandler.GetByID)
-	mux.HandleFunc("POST /api/suppliers", supplierHandler.Create)
-	mux.HandleFunc("PUT /api/suppliers/{id}", supplierHandler.Update)
-	mux.HandleFunc("DELETE /api/suppliers/{id}", supplierHandler.Delete)
 
 	mux.HandleFunc("GET /api/customers", customerHandler.GetAll)
 	mux.HandleFunc("GET /api/customers/{id}", customerHandler.GetByID)
 	mux.HandleFunc("POST /api/customers", customerHandler.Create)
 	mux.HandleFunc("PUT /api/customers/{id}", customerHandler.Update)
-	mux.HandleFunc("DELETE /api/customers/{id}", customerHandler.Delete)
 	mux.HandleFunc("GET /api/customers/{id}/orders", customerHandler.GetOrders)
 
-	mux.HandleFunc("POST /api/stock/adjust", stockHandler.Adjust)
+	mux.Handle("POST /api/stock/adjust", middleware.RequireOwner(http.HandlerFunc(stockHandler.Adjust)))
 	mux.HandleFunc("GET /api/stock/logs", stockHandler.GetLogs)
 	mux.HandleFunc("GET /api/stock/logs/all", stockHandler.GetAllLogs)
 
 	mux.HandleFunc("GET /api/settings/{key}", settingHandler.Get)
-	mux.HandleFunc("PUT /api/settings/{key}", settingHandler.Upsert)
+	mux.Handle("PUT /api/settings/{key}", middleware.RequireOwner(http.HandlerFunc(settingHandler.Upsert)))
+	mux.Handle("POST /api/settings/midtrans", middleware.RequireOwner(http.HandlerFunc(settingHandler.SaveMidtransConfig)))
+	mux.HandleFunc("GET /api/settings/midtrans", settingHandler.GetMidtransConfig)
 
-	mux.HandleFunc("GET /api/reports/stock", reportHandler.GetStockReport)
-	mux.HandleFunc("GET /api/reports/customers", reportHandler.GetCustomerReport)
-	mux.HandleFunc("GET /api/reports/profit-loss", reportHandler.GetProfitLoss)
+	mux.Handle("GET /api/reports/stock", middleware.RequireOwner(http.HandlerFunc(reportHandler.GetStockReport)))
+	mux.Handle("GET /api/reports/customers", middleware.RequireOwner(http.HandlerFunc(reportHandler.GetCustomerReport)))
+	mux.Handle("GET /api/reports/profit-loss", middleware.RequireOwner(http.HandlerFunc(reportHandler.GetProfitLoss)))
+
+	mux.HandleFunc("GET /api/expenses", expenseHandler.GetAll)
+	mux.HandleFunc("GET /api/expenses/{id}", expenseHandler.GetByID)
+	mux.HandleFunc("POST /api/expenses", expenseHandler.Create)
+	mux.HandleFunc("PUT /api/expenses/{id}", expenseHandler.Update)
+	mux.Handle("DELETE /api/expenses/{id}", middleware.RequireOwner(http.HandlerFunc(expenseHandler.Delete)))
 
 	promoSvc.DeactivateExpiredPromos(context.Background())
 
@@ -168,8 +190,32 @@ func main() {
 	handler := middleware.CORS(middleware.Recovery(authMw(middleware.Logger(apiLimiter.Middleware(mux)))))
 
 	port := getEnv("PORT", "8081")
+	server := &http.Server{
+		Addr:    ":" + port,
+		Handler: handler,
+	}
+
+	// Graceful shutdown
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		<-sigChan
+		fmt.Println("\nShutting down server...")
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if sqlDB, err := DB.DB(); err == nil {
+			sqlDB.Close()
+		}
+		if err := server.Shutdown(ctx); err != nil {
+			log.Fatalf("Server forced to shutdown: %v", err)
+		}
+		fmt.Println("Server stopped gracefully")
+	}()
+
 	fmt.Printf("Backend server running on http://localhost:%s\n", port)
-	if err := http.ListenAndServe(":"+port, handler); err != nil {
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }
@@ -212,6 +258,7 @@ func runMigrations() {
 		&models.Supplier{},
 		&models.Customer{},
 		&models.StoreSetting{},
+		&models.Expense{},
 	)
 	if err != nil {
 		log.Fatalf("Auto-migration failed: %v", err)

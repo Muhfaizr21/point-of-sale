@@ -50,9 +50,17 @@ const formatDateShort = (dateStr) => {
   return new Intl.DateTimeFormat('id-ID', { weekday: 'short', day: '2-digit', month: 'short' }).format(date)
 }
 
+const getLocalDateString = (dateObj) => {
+  const d = new Date(dateObj)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const getDateRange = (period) => {
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  const todayStr = today.toISOString().split('T')[0]
+  const today = new Date()
+  const todayStr = getLocalDateString(today)
   let dateFrom = new Date(today)
   switch (period) {
     case 'today': dateFrom = today; break
@@ -62,13 +70,13 @@ const getDateRange = (period) => {
     case 'year': dateFrom.setFullYear(dateFrom.getFullYear() - 1); break
     default: dateFrom.setDate(dateFrom.getDate() - 7)
   }
-  return { dateFrom: dateFrom.toISOString().split('T')[0], dateTo: todayStr }
+  return { dateFrom: getLocalDateString(dateFrom), dateTo: todayStr }
 }
 
 const tabs = [
   { id: 'penjualan', label: 'Penjualan', icon: 'trending_up' },
   { id: 'stok', label: 'Stok', icon: 'inventory' },
-  { id: 'pelanggan', label: 'Pelanggan', icon: 'people' },
+
   { id: 'kasir', label: 'Kasir', icon: 'badge' },
   { id: 'pembayaran', label: 'Pembayaran', icon: 'payments' },
   { id: 'labarugi', label: 'Laba-Rugi', icon: 'account_balance' },
@@ -132,9 +140,6 @@ export function LaporanPage({ onToggleSidebar }) {
       } else if (activeTab === 'stok') {
         const data = await reportService.getStockReport()
         setStockReport(data)
-      } else if (activeTab === 'pelanggan') {
-        const data = await reportService.getCustomerReport({ dateFrom: customFrom, dateTo: customTo })
-        setCustomerReport(data)
       } else if (activeTab === 'labarugi') {
         const data = await reportService.getProfitLoss({ dateFrom: customFrom, dateTo: customTo })
         setProfitLoss(data)
@@ -150,7 +155,16 @@ export function LaporanPage({ onToggleSidebar }) {
   useEffect(() => {
     fetchAll()
     window.addEventListener('checkout-success', fetchAll)
-    return () => window.removeEventListener('checkout-success', fetchAll)
+    const interval = setInterval(fetchAll, 30000)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchAll()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      window.removeEventListener('checkout-success', fetchAll)
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [fetchAll])
 
   useEffect(() => {
@@ -579,7 +593,7 @@ export function LaporanPage({ onToggleSidebar }) {
                   <th className="p-md font-semibold">Kategori</th>
                   <th className="p-md font-semibold text-right">SKU</th>
                   <th className="p-md font-semibold text-right">Harga Jual</th>
-                  <th className="p-md font-semibold text-right">Modal</th>
+                  <th className="p-md font-semibold text-right">Harga Pokok (HPP)</th>
                   <th className="p-md font-semibold text-right">Stok</th>
                   <th className="p-md font-semibold text-right">Nilai Stok</th>
                   <th className="p-md font-semibold">Status</th>
@@ -660,64 +674,7 @@ export function LaporanPage({ onToggleSidebar }) {
     )
   }
 
-  // --- Tab: Pelanggan ---
-  const renderPelanggan = () => {
-    const items = customerReport?.items || []
-    return (
-      <div className="space-y-md">
-        <div className="grid grid-cols-3 gap-md">
-          {[
-            { label: 'Total Pelanggan', value: customerReport?.total_customers || 0, icon: 'people', color: 'primary' },
-            { label: 'Total Belanja', value: formatPrice(customerReport?.total_revenue || 0), icon: 'payments', color: 'secondary' },
-            { label: 'Rata-rata Belanja', value: formatPrice(customerReport?.avg_spending || 0), icon: 'shopping_bag', color: 'tertiary' },
-          ].map((card, i) => (
-            <div key={i} className="bg-surface border border-outline-variant rounded-xl p-md">
-              <div className="flex items-center gap-sm mb-sm">
-                <div className={`w-10 h-10 rounded-lg bg-${card.color}/10 flex items-center justify-center`}>
-                  <span className={`material-symbols-outlined text-${card.color} filled-icon`}>{card.icon}</span>
-                </div>
-                <span className="text-label-sm text-on-surface-variant font-medium">{card.label}</span>
-              </div>
-              <p className={`text-headline-md text-${card.color} font-bold`}>{card.value}</p>
-            </div>
-          ))}
-        </div>
 
-        <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden">
-          <div className="p-md border-b border-outline-variant bg-surface-container-lowest">
-            <h3 className="text-body-lg font-semibold text-on-surface">Data Pelanggan</h3>
-            <p className="text-label-sm text-on-surface-variant">{items.length} pelanggan aktif</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-surface-container-high border-b border-outline-variant text-label-sm text-on-surface-variant">
-                  <th className="p-md font-semibold">Nama</th>
-                  <th className="p-md font-semibold">Telepon</th>
-                  <th className="p-md font-semibold text-right">Total Belanja</th>
-                  <th className="p-md font-semibold text-right">Transaksi</th>
-                  <th className="p-md font-semibold text-right">Pesanan Terakhir</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-variant">
-                {items.length === 0 ? (
-                  <tr><td colSpan={5} className="p-md text-center text-on-surface-variant">Tidak ada data pelanggan</td></tr>
-                ) : (items.map((c, idx) => (
-                  <tr key={c.customer_id || idx} className="hover:bg-surface-container-low transition-colors text-body-md text-on-surface">
-                    <td className="p-md font-medium">{c.name}</td>
-                    <td className="p-md text-on-surface-variant">{c.phone || '-'}</td>
-                    <td className="p-md text-right font-semibold">{formatFullPrice(c.total_spent)}</td>
-                    <td className="p-md text-right">{c.order_count}</td>
-                    <td className="p-md text-right text-on-surface-variant text-label-sm">{c.last_order ? formatDateShort(c.last_order) : '-'}</td>
-                  </tr>
-                )))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // --- Tab: Kasir ---
   const renderKasir = () => {
@@ -880,15 +837,18 @@ export function LaporanPage({ onToggleSidebar }) {
   // --- Tab: Laba-Rugi ---
   const renderLabaRugi = () => {
     const pl = profitLoss
-    const summary = pl?.summary || { total_revenue: 0, total_cost: 0, total_profit: 0, avg_margin: 0, total_transactions: 0 }
+    const summary = pl?.summary || { total_revenue: 0, total_cost: 0, total_modal: 0, total_expense: 0, total_profit: 0, net_profit: 0, avg_margin: 0, total_transactions: 0 }
     const daily = pl?.daily || []
     return (
       <div className="space-y-md">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-md">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-md">
           {[
             { label: 'Total Pendapatan', value: formatPrice(summary.total_revenue), icon: 'trending_up', color: 'primary' },
-            { label: 'Total Modal', value: formatPrice(summary.total_cost), icon: 'money_off', color: 'secondary' },
-            { label: 'Laba Bersih', value: formatPrice(summary.total_profit), icon: 'account_balance', color: summary.total_profit >= 0 ? 'tertiary' : 'error' },
+            { label: 'Total HPP (Harga Pokok)', value: formatPrice(summary.total_cost), icon: 'money_off', color: 'secondary' },
+            { label: 'Modal Harian (Setor)', value: formatPrice(summary.total_modal), icon: 'savings', color: 'tertiary' },
+            { label: 'Total Pengeluaran', value: formatPrice(summary.total_expense), icon: 'receipt', color: 'warning' },
+            { label: 'Laba Kotor', value: formatPrice(summary.total_profit), icon: 'account_balance', color: summary.total_profit >= 0 ? 'tertiary' : 'error' },
+            { label: 'Laba Bersih', value: formatPrice(summary.net_profit), icon: 'savings', color: summary.net_profit >= 0 ? 'tertiary' : 'error' },
             { label: 'Margin Rata-rata', value: `${summary.avg_margin.toFixed(1)}%`, icon: 'percent', color: summary.avg_margin >= 0 ? 'tertiary' : 'error' },
           ].map((card, i) => (
             <div key={i} className="bg-surface border border-outline-variant rounded-xl p-md relative overflow-hidden">
@@ -908,7 +868,7 @@ export function LaporanPage({ onToggleSidebar }) {
             <h3 className="text-body-lg font-semibold text-on-surface">Tren Laba-Rugi Harian</h3>
           </div>
           <div className="p-md" style={{ height: 300 }}>
-            {daily.length > 0 && daily.some(d => d.revenue > 0) ? (
+            {daily.length > 0 && daily.some(d => d.revenue > 0 || d.expense > 0 || d.modal > 0) ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={daily}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e4beba" opacity={0.5} />
@@ -917,7 +877,8 @@ export function LaporanPage({ onToggleSidebar }) {
                   <Tooltip content={<CustomTooltip formatter={formatFullPrice} />} />
                   <Legend />
                   <Bar dataKey="revenue" fill="#af101a" radius={[4, 4, 0, 0]} name="Pendapatan" />
-                  <Bar dataKey="cost" fill="#5f5e5e" radius={[4, 4, 0, 0]} name="Modal" />
+                  <Bar dataKey="cost" fill="#5f5e5e" radius={[4, 4, 0, 0]} name="HPP" />
+                  <Bar dataKey="modal" fill="#8f6f6c" radius={[4, 4, 0, 0]} name="Modal Setor" />
                   <Bar dataKey="profit" fill="#2d8a4e" radius={[4, 4, 0, 0]} name="Laba" />
                 </BarChart>
               </ResponsiveContainer>
@@ -935,21 +896,27 @@ export function LaporanPage({ onToggleSidebar }) {
                 <tr className="bg-surface-container-high border-b border-outline-variant text-label-sm text-on-surface-variant">
                   <th className="p-md font-semibold">Tanggal</th>
                   <th className="p-md font-semibold text-right">Pendapatan</th>
-                  <th className="p-md font-semibold text-right">Modal</th>
-                  <th className="p-md font-semibold text-right">Laba</th>
+                  <th className="p-md font-semibold text-right">HPP</th>
+                  <th className="p-md font-semibold text-right">Modal Setor</th>
+                  <th className="p-md font-semibold text-right">Pengeluaran</th>
+                  <th className="p-md font-semibold text-right">Laba Kotor</th>
+                  <th className="p-md font-semibold text-right">Laba Bersih</th>
                   <th className="p-md font-semibold text-right">Margin</th>
                   <th className="p-md font-semibold text-right">Transaksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-variant">
-                {daily.length === 0 || !daily.some(d => d.revenue > 0) ? (
-                  <tr><td colSpan={6} className="p-md text-center text-on-surface-variant">Tidak ada data</td></tr>
-                ) : (daily.filter(d => d.revenue > 0).map((d, idx) => (
+                {daily.length === 0 || !daily.some(d => d.revenue > 0 || d.expense > 0 || d.modal > 0) ? (
+                  <tr><td colSpan={9} className="p-md text-center text-on-surface-variant">Tidak ada data</td></tr>
+                ) : (daily.filter(d => d.revenue > 0 || d.expense > 0 || d.modal > 0).map((d, idx) => (
                   <tr key={d.date || idx} className="hover:bg-surface-container-low transition-colors text-body-md text-on-surface">
                     <td className="p-md font-medium">{d.label || formatDateShort(d.date)}</td>
                     <td className="p-md text-right font-semibold">{formatFullPrice(d.revenue)}</td>
                     <td className="p-md text-right">{formatFullPrice(d.cost)}</td>
+                    <td className="p-md text-right text-tertiary">{formatFullPrice(d.modal)}</td>
+                    <td className="p-md text-right text-amber-600">{formatFullPrice(d.expense)}</td>
                     <td className={`p-md text-right font-semibold ${d.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatFullPrice(d.profit)}</td>
+                    <td className={`p-md text-right font-semibold ${d.net_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatFullPrice(d.net_profit)}</td>
                     <td className={`p-md text-right ${d.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>{d.margin.toFixed(1)}%</td>
                     <td className="p-md text-right">{d.transactions}</td>
                   </tr>
@@ -960,7 +927,10 @@ export function LaporanPage({ onToggleSidebar }) {
                   <td className="p-md">Total</td>
                   <td className="p-md text-right text-primary">{formatFullPrice(summary.total_revenue)}</td>
                   <td className="p-md text-right">{formatFullPrice(summary.total_cost)}</td>
+                  <td className="p-md text-right text-tertiary">{formatFullPrice(summary.total_modal)}</td>
+                  <td className="p-md text-right text-amber-600">{formatFullPrice(summary.total_expense)}</td>
                   <td className={`p-md text-right ${summary.total_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatFullPrice(summary.total_profit)}</td>
+                  <td className={`p-md text-right font-bold ${summary.net_profit >= 0 ? 'text-green-700' : 'text-red-700'}`}>{formatFullPrice(summary.net_profit)}</td>
                   <td className={`p-md text-right ${summary.avg_margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>{summary.avg_margin.toFixed(1)}%</td>
                   <td className="p-md text-right">{summary.total_transactions}</td>
                 </tr>
@@ -1027,7 +997,6 @@ export function LaporanPage({ onToggleSidebar }) {
       <div className="flex-1 overflow-y-auto p-lg hide-scrollbar">
         {activeTab === 'penjualan' && renderPenjualan()}
         {activeTab === 'stok' && renderStok()}
-        {activeTab === 'pelanggan' && renderPelanggan()}
         {activeTab === 'kasir' && renderKasir()}
         {activeTab === 'pembayaran' && renderPembayaran()}
         {activeTab === 'labarugi' && renderLabaRugi()}

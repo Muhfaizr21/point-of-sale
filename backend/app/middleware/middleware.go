@@ -76,6 +76,31 @@ func GetUser(r *http.Request) *models.User {
 	return nil
 }
 
+func RequireRole(roles ...string) func(http.Handler) http.Handler {
+	allowed := make(map[string]bool)
+	for _, r := range roles {
+		allowed[r] = true
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			user := GetUser(r)
+			if user == nil {
+				models.WriteError(w, models.NewAPIError(models.ErrUnauthorized, "Silakan login terlebih dahulu", 401))
+				return
+			}
+			if !allowed[user.Role] {
+				models.WriteError(w, models.NewAPIError(models.ErrForbidden, "Anda tidak memiliki izin untuk mengakses sumber daya ini", 403))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func RequireOwner(next http.Handler) http.Handler {
+	return RequireRole("owner")(next)
+}
+
 func Authenticate(db *gorm.DB, skipPaths ...string) func(http.Handler) http.Handler {
 	skipMap := make(map[string]bool)
 	for _, p := range skipPaths {

@@ -63,6 +63,8 @@ export function StockPage({ products: initialProducts = [], onToggleSidebar, onR
     try {
       const change = parseInt(adjChange)
       if (change === 0) { setAdjError('Perubahan tidak boleh 0'); return }
+      const prod = products.find(p => p.id === parseInt(adjProduct))
+      if (prod && !prod.track_stock) { setAdjError('Stok produk ini tidak dilacak'); return }
       await apiClient.post('/api/stock/adjust', {
         product_id: parseInt(adjProduct),
         change,
@@ -70,7 +72,6 @@ export function StockPage({ products: initialProducts = [], onToggleSidebar, onR
       })
       await fetchAll()
       if (onRefreshProducts) onRefreshProducts()
-      const prod = products.find(p => p.id === parseInt(adjProduct))
       setAdjSuccess(`Stok ${prod?.name || ''} berhasil disesuaikan`)
       setAdjChange('')
       setAdjNote('')

@@ -47,7 +47,7 @@ func (s *analyticsService) GetAnalytics(ctx context.Context, query *models.Analy
 	err := s.db.WithContext(ctx).
 		Preload("OrderItems").
 		Where("created_at >= ? AND created_at <= ?", dateFrom, dateTo.AddDate(0, 0, 1)).
-		Where("order_status IN ?", []string{"COMPLETED", "SELESAI"}).
+		Where("order_status IN ?", []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"}).
 		Order("created_at asc").
 		Find(&orders).Error
 	if err != nil {
@@ -269,7 +269,7 @@ func (s *analyticsService) calculateRevenueGrowth(ctx context.Context, dateFrom,
 	s.db.WithContext(ctx).
 		Model(&models.Order{}).
 		Where("created_at >= ? AND created_at <= ?", prevFrom, prevTo.AddDate(0, 0, 1)).
-		Where("order_status IN ?", []string{"COMPLETED", "SELESAI"}).
+		Where("order_status IN ?", []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"}).
 		Select("COALESCE(SUM(total), 0)").
 		Scan(&prevRevenue)
 

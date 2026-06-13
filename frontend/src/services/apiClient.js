@@ -26,6 +26,9 @@ export const apiClient = {
 
       // Handle raw error statuses
       if (!response.ok) {
+        if (response.status === 401) {
+          window.dispatchEvent(new CustomEvent('auth-expired'));
+        }
         let errorMessage = 'Request failed';
         try {
           const errorResult = await response.json();
@@ -71,6 +74,9 @@ export const apiClient = {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          window.dispatchEvent(new CustomEvent('auth-expired'));
+        }
         let errorMessage = 'Upload failed';
         try {
           const errorResult = await response.json();

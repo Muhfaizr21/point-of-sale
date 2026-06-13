@@ -93,7 +93,7 @@ func (s *reportService) GetCustomerReport(ctx context.Context, dateFrom, dateTo 
 		var lastOrder time.Time
 		s.db.WithContext(ctx).
 			Model(&models.Order{}).
-			Where("customer_id = ? AND created_at >= ? AND created_at <= ? AND order_status = ?", c.ID, from, to.AddDate(0, 0, 1), "COMPLETED").
+			Where("customer_id = ? AND created_at >= ? AND created_at <= ? AND order_status IN ?", c.ID, from, to.AddDate(0, 0, 1), []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"}).
 			Select("COALESCE(COUNT(*), 0), COALESCE(MAX(created_at), '1970-01-01'::timestamp)").
 			Row().Scan(&orderCount, &lastOrder)
 
@@ -152,8 +152,11 @@ func (s *reportService) GetProfitLoss(ctx context.Context, dateFrom, dateTo stri
 	var orders []models.Order
 	err := s.db.WithContext(ctx).
 		Preload("OrderItems").
+		Preload("OrderItems.Product", func(db *gorm.DB) *gorm.DB {
+			return db.Unscoped()
+		}).
 		Where("created_at >= ? AND created_at <= ?", from, to.AddDate(0, 0, 1)).
-		Where("order_status = ?", "COMPLETED").
+		Where("order_status IN ?", []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"}).
 		Order("created_at asc").
 		Find(&orders).Error
 	if err != nil {
@@ -163,6 +166,27 @@ func (s *reportService) GetProfitLoss(ctx context.Context, dateFrom, dateTo stri
 	dailyMap := make(map[string]*models.ProfitLossItem)
 	var totalRevenue, totalCost, totalTransactions int
 
+	// Fetch expenses in date range
+	var expenses []models.Expense
+	s.db.WithContext(ctx).
+		Model(&models.Expense{}).
+		Where("date >= ? AND date <= ?", from.Format("2006-01-02"), to.Format("2006-01-02")).
+		Find(&expenses)
+
+	totalExpense := 0
+	totalModal := 0
+	expenseMap := make(map[string]int)
+	modalMap := make(map[string]int)
+	for _, exp := range expenses {
+		if exp.Category == "Modal" {
+			totalModal += exp.Amount
+			modalMap[exp.Date] += exp.Amount
+		} else {
+			totalExpense += exp.Amount
+			expenseMap[exp.Date] += exp.Amount
+		}
+	}
+
 	for _, order := range orders {
 		totalRevenue += order.Total
 		totalTransactions++
@@ -170,8 +194,11 @@ func (s *reportService) GetProfitLoss(ctx context.Context, dateFrom, dateTo stri
 		orderCost := 0
 		for _, item := range order.OrderItems {
 			cp := item.CostPrice
-			if cp <= 0 {
-				cp = item.Price / 2 // fallback
+			if cp <= 0 && item.Product.ID != 0 {
+				cp = item.Product.CostPrice
+			}
+			if cp < 0 {
+				cp = 0
 			}
 			orderCost += cp * item.Quantity
 		}
@@ -194,30 +221,43 @@ func (s *reportService) GetProfitLoss(ctx context.Context, dateFrom, dateTo stri
 	for !cur.After(to) {
 		key := cur.Format("2006-01-02")
 		if d, ok := dailyMap[key]; ok {
+			d.Expense = expenseMap[key]
+			d.Modal = modalMap[key]
 			d.Profit = d.Revenue - d.Cost
+			d.NetProfit = d.Revenue - d.Cost - d.Expense
 			if d.Revenue > 0 {
 				d.Margin = float64(d.Profit) / float64(d.Revenue) * 100
 			}
 			daily = append(daily, *d)
 		} else {
+			exp := expenseMap[key]
+			mod := modalMap[key]
 			daily = append(daily, models.ProfitLossItem{
-				Date:  key,
-				Label: cur.Format("02 Jan"),
+				Date:      key,
+				Label:     cur.Format("02 Jan"),
+				Expense:   exp,
+				Modal:     mod,
+				NetProfit: -exp,
 			})
 		}
 		cur = cur.AddDate(0, 0, 1)
 	}
 
+	grossProfit := totalRevenue - totalCost
+	netProfit := grossProfit - totalExpense
 	avgMargin := 0.0
 	if totalRevenue > 0 {
-		avgMargin = float64(totalRevenue-totalCost) / float64(totalRevenue) * 100
+		avgMargin = float64(grossProfit) / float64(totalRevenue) * 100
 	}
 
 	return &models.ProfitLossResponse{
 		Summary: models.ProfitLossSummary{
 			TotalRevenue:      totalRevenue,
 			TotalCost:         totalCost,
-			TotalProfit:       totalRevenue - totalCost,
+			TotalModal:        totalModal,
+			TotalExpense:      totalExpense,
+			TotalProfit:       grossProfit,
+			NetProfit:         netProfit,
 			AvgMargin:         avgMargin,
 			TotalTransactions: totalTransactions,
 		},

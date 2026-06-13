@@ -6,6 +6,7 @@ import (
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/services"
 	"strconv"
+	"strings"
 )
 
 type CustomerHandler struct {
@@ -17,6 +18,25 @@ func NewCustomerHandler(svc services.CustomerService) *CustomerHandler {
 }
 
 func (h *CustomerHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	search := strings.TrimSpace(r.URL.Query().Get("search"))
+
+	if page > 0 && limit > 0 {
+		list, total, err := h.svc.GetAllPaginated(r.Context(), page, limit, search)
+		if err != nil { models.WriteError(w, err); return }
+		totalPages := int(total) / limit
+		if int(total)%limit > 0 { totalPages++ }
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": list,
+			"pagination": models.Pagination{
+				Page: page, Limit: limit, TotalItems: int(total), TotalPages: totalPages,
+			},
+		})
+		return
+	}
+
 	list, err := h.svc.GetAll(r.Context())
 	if err != nil { models.WriteError(w, err); return }
 	w.Header().Set("Content-Type", "application/json")

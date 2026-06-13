@@ -16,10 +16,10 @@ var ValidPaymentMethods = map[string]bool{
 var ValidOrderStatuses = []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"}
 
 var ValidStatusTransitions = map[string][]string{
-	"COMPLETED": {"DIKEMAS"},
+	"COMPLETED": {"DIKEMAS", "DIKIRIM", "SELESAI"},
 	"DIKEMAS":   {"DIKIRIM", "COMPLETED"},
-	"DIKIRIM":   {"SELESAI", "DIKEMAS"},
-	"SELESAI":   {"DIKIRIM"},
+	"DIKIRIM":   {"SELESAI", "DIKEMAS", "COMPLETED"},
+	"SELESAI":   {"DIKIRIM", "COMPLETED"},
 }
 
 type Order struct {
@@ -56,6 +56,7 @@ type OrderItem struct {
 	CostPrice     int    `gorm:"type:integer;default:0" json:"cost_price"`
 	Quantity      int    `gorm:"type:integer;not null" json:"quantity"`
 	IsBundle      bool   `gorm:"default:false" json:"is_bundle"`
+	BundleID      *uint  `json:"bundle_id,omitempty"`
 	BundleName    string `gorm:"type:varchar(255)" json:"bundle_name,omitempty"`
 	Product       Product `gorm:"foreignKey:ProductID" json:"product,omitempty"`
 }

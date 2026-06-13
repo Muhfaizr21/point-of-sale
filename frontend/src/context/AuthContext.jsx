@@ -8,6 +8,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const handleAuthExpired = () => {
+      hardLogout()
+    }
+    window.addEventListener('auth-expired', handleAuthExpired)
+
     const token = localStorage.getItem('token')
     if (token) {
       apiClient.defaultHeaders['Authorization'] = `Bearer ${token}`
@@ -21,6 +26,8 @@ export function AuthProvider({ children }) {
     } else {
       setLoading(false)
     }
+
+    return () => window.removeEventListener('auth-expired', handleAuthExpired)
   }, [])
 
   const login = async (username, password) => {

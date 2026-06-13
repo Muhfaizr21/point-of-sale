@@ -6,6 +6,7 @@ import (
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/services"
 	"strconv"
+	"strings"
 )
 
 type ProductHandler struct {
@@ -17,12 +18,39 @@ func NewProductHandler(service services.ProductService) *ProductHandler {
 }
 
 func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	search := strings.TrimSpace(r.URL.Query().Get("search"))
+	category := strings.TrimSpace(r.URL.Query().Get("category"))
+
+	if page > 0 && limit > 0 {
+		products, total, err := h.service.GetAllProductsPaginated(r.Context(), page, limit, search, category)
+		if err != nil {
+			models.WriteError(w, err)
+			return
+		}
+		totalPages := int(total) / limit
+		if int(total)%limit > 0 {
+			totalPages++
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": products,
+			"pagination": models.Pagination{
+				Page:       page,
+				Limit:      limit,
+				TotalItems: int(total),
+				TotalPages: totalPages,
+			},
+		})
+		return
+	}
+
 	products, err := h.service.GetAllProducts(r.Context())
 	if err != nil {
 		models.WriteError(w, err)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(products)

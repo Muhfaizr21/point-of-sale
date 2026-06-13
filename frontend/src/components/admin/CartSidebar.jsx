@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Button } from '../common/Button'
 
 const METHOD_VALUE_MAP = {
@@ -32,7 +32,6 @@ export function CartSidebar({
   onClearCart,
   subtotal,
   discountAmount,
-  total,
   isOpen,
   onClose,
   onCheckout,
@@ -51,6 +50,8 @@ export function CartSidebar({
   onSplitPaymentsChange,
   activePromos,
 }) {
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [checkoutSuccessData, setCheckoutSuccessData] = useState(null)
   const paymentMethods = useMemo(() => getPaymentMethods(), [])
   const splitMethods = useMemo(() => getPaymentMethods(), [])
 
@@ -155,7 +156,10 @@ export function CartSidebar({
                         type="number"
                         min="0"
                         value={discount || ''}
-                        onChange={(e) => onDiscountChange(Math.max(0, parseInt(e.target.value) || 0))}
+                        onChange={(e) => {
+                          const val = Math.max(0, parseInt(e.target.value) || 0)
+                          onDiscountChange(Math.min(val, Math.floor(subtotal / 2)))
+                        }}
                         placeholder="0"
                         className="w-full pl-12 pr-4 py-2 border border-outline-variant rounded-lg text-body-md font-semibold text-on-surface bg-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                       />
@@ -251,7 +255,9 @@ export function CartSidebar({
                         onChange={(e) => {
                           const raw = e.target.value.replace(/\D/g, '')
                           const next = [...splitPayments]
-                          next[i].amount = Math.max(0, parseInt(raw) || 0)
+                          const newAmount = Math.max(0, parseInt(raw) || 0)
+                          const othersSum = next.reduce((sum, p, idx) => idx === i ? sum : sum + (p.amount || 0), 0)
+                          next[i].amount = Math.max(0, Math.min(newAmount, displayTotal - othersSum))
                           onSplitPaymentsChange(next)
                         }}
                         placeholder="0"
@@ -288,7 +294,7 @@ export function CartSidebar({
                   )}
                   {splitPayments.length > 0 && (
                     <div className="flex justify-between text-label-xs text-on-surface-variant pt-1">
-                      <span>Sisa: {formatPrice(total - splitPayments.reduce((s, p) => s + (p.amount || 0), 0))}</span>
+                      <span>Sisa: {formatPrice(displayTotal - splitPayments.reduce((s, p) => s + (p.amount || 0), 0))}</span>
                     </div>
                   )}
                 </div>
@@ -395,7 +401,7 @@ export function CartSidebar({
             <Button
               variant="outline"
               onClick={onClearCart}
-              disabled={cart.length === 0}
+              disabled={cart.length === 0 || isProcessing}
               className="flex-1 py-3"
             >
               Batal
@@ -404,27 +410,229 @@ export function CartSidebar({
               variant="primary"
               onClick={async () => {
                 if (cart.length > 0) {
+                  setIsProcessing(true)
                   try {
                     const result = await onCheckout()
                     window.dispatchEvent(new CustomEvent('checkout-success', { detail: result }))
-                    alert(`Pembayaran Sukses!\nNo. Invoice: ${result.invoice_number}\nTotal Bayar: ${formatPrice(result.total)}`)
-                    onClose()
+                    setCheckoutSuccessData(result)
                   } catch (err) {
                     alert(`Gagal memproses pembayaran: ${err.message}`)
+                  } finally {
+                    setIsProcessing(false)
                   }
                 }
               }}
-              disabled={cart.length === 0 || isCheckingOut}
-              className="flex-[2] py-3"
+              disabled={cart.length === 0 || isCheckingOut || isProcessing}
+              className="flex-[2] py-3 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <span className={`material-symbols-outlined ${isCheckingOut ? 'animate-spin' : ''}`}>
-                {isCheckingOut ? 'sync' : 'payments'}
-              </span>
-              {isCheckingOut ? 'Memproses...' : 'Bayar'}
+              {(isCheckingOut || isProcessing) ? (
+                <><span className="material-symbols-outlined animate-spin text-[20px]">sync</span><span>Memproses...</span></>
+              ) : (
+                <><span className="material-symbols-outlined text-[20px]">payments</span><span>Bayar</span></>
+              )}
             </Button>
           </div>
         </div>
       </aside>
+
+      {/* Modern & Premium Success Modal */}
+      {checkoutSuccessData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-md bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-surface border border-outline-variant rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col p-lg text-on-surface animate-slide-up">
+            {/* Header / Success Indicator */}
+            <div className="flex flex-col items-center text-center mb-md">
+              <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center text-green-600 dark:text-green-400 mb-md animate-bounce">
+                <span className="material-symbols-outlined text-[40px] font-bold filled-icon">check_circle</span>
+              </div>
+              <h2 className="text-headline-md font-bold text-green-600 dark:text-green-400">Pembayaran Berhasil!</h2>
+              <p className="text-body-sm text-on-surface-variant mt-1">Transaksi Anda telah selesai diproses.</p>
+            </div>
+
+            {/* Receipt Paper Card */}
+            <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-xl p-md shadow-sm relative overflow-hidden mb-lg">
+              {/* Top Receipt Decorative Cutouts */}
+              <div className="absolute top-0 left-0 right-0 h-1.5 flex justify-between px-2 overflow-hidden opacity-30">
+                {Array.from({ length: 20 }).map((_, i) => (
+                  <div key={i} className="w-2 h-2 bg-on-surface rounded-full -translate-y-1" />
+                ))}
+              </div>
+
+              <div className="pt-2 text-center">
+                <p className="text-body-lg font-bold text-primary tracking-wide">{(localStorage.getItem('storeName') || 'PEKALIPAN').toUpperCase()}</p>
+                <p className="text-label-xs text-on-surface-variant mt-0.5">{localStorage.getItem('storeAddress') || 'Jl. Pekalipan No. 99, Cirebon'}</p>
+              </div>
+
+              {/* Dotted Line */}
+              <div className="border-b border-dashed border-outline-variant my-md" />
+
+              {/* Meta Info */}
+              <div className="space-y-1 text-body-sm">
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">No. Invoice</span>
+                  <span className="font-semibold text-on-surface font-data-mono">{checkoutSuccessData.invoice_number}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">Tanggal</span>
+                  <span className="text-on-surface">{new Date(checkoutSuccessData.created_at).toLocaleString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">Kasir</span>
+                  <span className="text-on-surface font-medium">{checkoutSuccessData.cashier || 'Kasir'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">Pelanggan</span>
+                  <span className="text-on-surface font-medium">{checkoutSuccessData.customer || 'Umum'}</span>
+                </div>
+              </div>
+
+              {/* Dotted Line */}
+              <div className="border-b border-dashed border-outline-variant my-md" />
+
+              {/* Item List */}
+              <div className="max-h-36 overflow-y-auto pr-1 space-y-2 mb-md hide-scrollbar">
+                {(checkoutSuccessData.items || []).map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-start text-body-sm">
+                    <div className="flex-1 pr-4">
+                      <p className="text-on-surface font-medium">{item.product_name || item.name}</p>
+                      {item.variation_name && (
+                        <p className="text-label-xs text-on-surface-variant">Var: {item.variation_name}</p>
+                      )}
+                      <p className="text-label-xs text-on-surface-variant">{item.quantity} x {formatPrice(item.price)}</p>
+                    </div>
+                    <span className="font-semibold text-on-surface text-right shrink-0">{formatPrice(item.price * item.quantity)}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Dotted Line */}
+              <div className="border-b border-dashed border-outline-variant my-md" />
+
+              {/* Price Breakdown */}
+              <div className="space-y-1 text-body-sm">
+                <div className="flex justify-between text-on-surface-variant">
+                  <span>Subtotal</span>
+                  <span>{formatPrice(checkoutSuccessData.subtotal)}</span>
+                </div>
+                {checkoutSuccessData.discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Diskon Manual</span>
+                    <span>-{formatPrice(checkoutSuccessData.discount)}</span>
+                  </div>
+                )}
+                {checkoutSuccessData.promo_discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Promo Diskon</span>
+                    <span>-{formatPrice(checkoutSuccessData.promo_discount)}</span>
+                  </div>
+                )}
+                {checkoutSuccessData.tax > 0 && (
+                  <div className="flex justify-between text-on-surface-variant">
+                    <span>Pajak ({checkoutSuccessData.tax_rate || 10}%)</span>
+                    <span>{formatPrice(checkoutSuccessData.tax)}</span>
+                  </div>
+                )}
+                {checkoutSuccessData.service_charge > 0 && (
+                  <div className="flex justify-between text-on-surface-variant">
+                    <span>Service Charge</span>
+                    <span>{formatPrice(checkoutSuccessData.service_charge)}</span>
+                  </div>
+                )}
+                {checkoutSuccessData.rounding_diff !== 0 && (
+                  <div className="flex justify-between text-indigo-500">
+                    <span>Pembulatan</span>
+                    <span>{formatPrice(checkoutSuccessData.rounding_diff)}</span>
+                  </div>
+                )}
+                <div className="border-t border-outline-variant pt-2 mt-2 flex justify-between items-end">
+                  <span className="text-body-md font-bold text-on-surface">TOTAL</span>
+                  <span className="text-body-lg font-bold text-primary">{formatPrice(checkoutSuccessData.total)}</span>
+                </div>
+                <div className="flex justify-between text-label-xs text-on-surface-variant mt-2 pt-1 border-t border-outline-variant/30">
+                  <span>Metode Pembayaran</span>
+                  <span className="font-bold uppercase text-primary">
+                    {paymentMethods.find(m => m.value === checkoutSuccessData.payment_method)?.label || checkoutSuccessData.payment_method}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-md">
+              <button
+                type="button"
+                onClick={() => {
+                  const centerText = (text, width = 37) => {
+                    if (!text) return ''
+                    const len = text.length
+                    if (len >= width) return text.substring(0, width)
+                    const leftPad = Math.floor((width - len) / 2)
+                    return ' '.repeat(leftPad) + text
+                  }
+                  const storeName = (localStorage.getItem('storeName') || 'PEKALIPAN').toUpperCase()
+                  const storeAddress = localStorage.getItem('storeAddress') || 'Jl. Pekalipan No. 99, Cirebon'
+                  const storePhone = localStorage.getItem('storePhone') || '081234567890'
+                  const receiptFooter = localStorage.getItem('receiptFooter') || 'Terima Kasih atas Kunjungan Anda'
+
+                  const printContent = `
+=====================================
+${centerText(storeName)}
+${centerText(storeAddress)}
+${centerText('Telp: ' + storePhone)}
+=====================================
+Invoice  : ${checkoutSuccessData.invoice_number}
+Tanggal  : ${new Date(checkoutSuccessData.created_at).toLocaleString('id-ID')}
+Kasir    : ${checkoutSuccessData.cashier || 'Admin'}
+-------------------------------------
+Pelanggan: ${checkoutSuccessData.customer || 'Umum'}
+-------------------------------------
+ITEM                QTY    HARGA
+${(checkoutSuccessData.items || []).map(item =>
+  `${(item.product_name || item.name || '').padEnd(18)} ${(item.quantity || 0).toString().padStart(3)} ${formatPrice(item.price || 0).padStart(10)}`
+).join('\n')}
+-------------------------------------
+Subtotal           ${formatPrice(checkoutSuccessData.subtotal || 0)}
+Pajak              ${formatPrice(checkoutSuccessData.tax || 0)}
+Diskon Manual      ${formatPrice(checkoutSuccessData.discount || 0)}
+Promo Diskon       ${formatPrice(checkoutSuccessData.promo_discount || 0)}
+=====================================
+TOTAL              ${formatPrice(checkoutSuccessData.total || 0)}
+Bayar (${checkoutSuccessData.payment_method})
+=====================================
+${centerText(receiptFooter)}
+=====================================
+                  `
+                  const printWindow = window.open('', '_blank', 'width=320,height=600')
+                  if (printWindow) {
+                    printWindow.document.write(`<!DOCTYPE html><html><head><title>Cetak Struk</title><style>
+                      body { font-family: 'Courier New', monospace; font-size: 12px; width: 280px; margin: 0 auto; padding: 10px; }
+                      pre { white-space: pre; font-family: 'Courier New', monospace; font-size: 12px; }
+                      @media print { @page { margin: 0; } body { padding: 0; } }
+                    </style></head><body><pre>${printContent}</pre><script>window.print();window.close();</script></body></html>`)
+                    printWindow.document.close()
+                  } else {
+                    window.print()
+                  }
+                }}
+                className="flex-1 py-3 px-4 border border-outline-variant text-on-surface hover:bg-surface-container-high rounded-xl text-body-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer outline-none"
+              >
+                <span className="material-symbols-outlined text-[20px]">print</span>
+                Cetak Struk
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCheckoutSuccessData(null)
+                  onClose()
+                }}
+                className="flex-1 py-3 px-4 bg-primary text-on-primary hover:bg-primary/95 rounded-xl text-body-sm font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer outline-none"
+              >
+                <span className="material-symbols-outlined text-[20px]">shopping_cart</span>
+                Transaksi Baru
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

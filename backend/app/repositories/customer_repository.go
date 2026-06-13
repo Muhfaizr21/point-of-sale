@@ -9,6 +9,7 @@ import (
 
 type CustomerRepository interface {
 	GetAll(ctx context.Context) ([]models.Customer, error)
+	GetAllPaginated(ctx context.Context, page, limit int, search string) ([]models.Customer, int64, error)
 	GetByID(ctx context.Context, id uint) (*models.Customer, error)
 	Create(ctx context.Context, c *models.Customer) (*models.Customer, error)
 	Update(ctx context.Context, c *models.Customer) error
@@ -28,6 +29,27 @@ func (r *customerRepository) GetAll(ctx context.Context) ([]models.Customer, err
 	var list []models.Customer
 	err := r.db.WithContext(ctx).Order("id desc").Find(&list).Error
 	return list, err
+}
+
+func (r *customerRepository) GetAllPaginated(ctx context.Context, page, limit int, search string) ([]models.Customer, int64, error) {
+	var total int64
+	db := r.db.WithContext(ctx).Model(&models.Customer{})
+	if search != "" {
+		db = db.Where("LOWER(name) LIKE ? OR LOWER(phone) LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+	var list []models.Customer
+	err := db.Order("id desc").Offset(offset).Limit(limit).Find(&list).Error
+	return list, total, err
 }
 
 func (r *customerRepository) GetByID(ctx context.Context, id uint) (*models.Customer, error) {

@@ -209,6 +209,7 @@ func (s *orderService) Checkout(ctx context.Context, req *models.CreateOrderRequ
 				CostPrice:   bundleCost,
 				Quantity:    reqBundle.Quantity,
 				IsBundle:    true,
+				BundleID:    &bundle.ID,
 				BundleName:  bundle.Name,
 			})
 		}
@@ -281,9 +282,12 @@ func (s *orderService) Checkout(ctx context.Context, req *models.CreateOrderRequ
 				})
 				splitSum += sp.Amount
 			}
-			// #2: Validate split sum >= total
+			// #2: Validate split sum matches total (allow ~0.5% tolerance)
 			if splitSum < total {
 				return models.NewAPIError(models.ErrInvalidInput, fmt.Sprintf("Total split (%d) kurang dari total bayar (%d)", splitSum, total), 400)
+			}
+			if splitSum > total+500 {
+				return models.NewAPIError(models.ErrInvalidInput, fmt.Sprintf("Total split (%d) melebihi total bayar (%d)", splitSum, total), 400)
 			}
 		}
 
@@ -332,7 +336,9 @@ func (s *orderService) generateInvoiceNumber() string {
 	now := time.Now()
 	dateStr := now.Format("20060102")
 	b := make([]byte, 4)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("INV-%s-%s%04d", dateStr, now.Format("150405"), now.UnixMilli()%10000)
+	}
 	randomHex := hex.EncodeToString(b)
 	return fmt.Sprintf("INV-%s-%s%s", dateStr, now.Format("150405"), randomHex)
 }
@@ -425,7 +431,21 @@ func (s *orderService) RefundOrder(ctx context.Context, id uint, req *models.Ref
 func (s *orderService) restoreStock(ctx context.Context, order *models.Order) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, item := range order.OrderItems {
-			if item.IsBundle || item.ProductID == 0 {
+			if item.IsBundle && item.BundleID != nil {
+				var bundle models.Bundle
+				if err := tx.Preload("Items").First(&bundle, *item.BundleID).Error; err != nil {
+					continue
+				}
+				for _, bi := range bundle.Items {
+					restoreQty := bi.Quantity * item.Quantity
+					if err := tx.Model(&models.Product{}).Where("id = ?", bi.ProductID).
+						Update("stock", gorm.Expr("stock + ?", restoreQty)).Error; err != nil {
+						return err
+					}
+				}
+				continue
+			}
+			if item.ProductID == 0 {
 				continue
 			}
 			if err := tx.Model(&models.Product{}).Where("id = ?", item.ProductID).
@@ -440,7 +460,26 @@ func (s *orderService) restoreStock(ctx context.Context, order *models.Order) er
 func (s *orderService) deductStock(ctx context.Context, order *models.Order) error {
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, item := range order.OrderItems {
-			if item.IsBundle || item.ProductID == 0 {
+			if item.IsBundle && item.BundleID != nil {
+				var bundle models.Bundle
+				if err := tx.Preload("Items.Product").First(&bundle, *item.BundleID).Error; err != nil {
+					continue
+				}
+				for _, bi := range bundle.Items {
+					deductQty := bi.Quantity * item.Quantity
+					if bi.Product.TrackStock && bi.Product.Stock < deductQty {
+						return models.NewAPIError(models.ErrOutOfStock, fmt.Sprintf("Stok %s tidak cukup untuk bundle %s", bi.Product.Name, bundle.Name), 400)
+					}
+					if bi.Product.TrackStock {
+						if err := tx.Model(&models.Product{}).Where("id = ?", bi.ProductID).
+							Update("stock", gorm.Expr("stock - ?", deductQty)).Error; err != nil {
+							return err
+						}
+					}
+				}
+				continue
+			}
+			if item.ProductID == 0 {
 				continue
 			}
 			var product models.Product

@@ -9,6 +9,7 @@ import (
 
 type ProductRepository interface {
 	GetAll(ctx context.Context) ([]models.Product, error)
+	GetAllPaginated(ctx context.Context, page, limit int, search, category string) ([]models.Product, int64, error)
 	GetByID(ctx context.Context, id uint) (*models.Product, error)
 	Create(ctx context.Context, product *models.Product) (*models.Product, error)
 	Update(ctx context.Context, product *models.Product) error
@@ -29,6 +30,30 @@ func (r *productRepository) GetAll(ctx context.Context) ([]models.Product, error
 	var products []models.Product
 	err := r.db.WithContext(ctx).Order("id desc").Find(&products).Error
 	return products, err
+}
+
+func (r *productRepository) GetAllPaginated(ctx context.Context, page, limit int, search, category string) ([]models.Product, int64, error) {
+	var total int64
+	db := r.db.WithContext(ctx).Model(&models.Product{})
+	if search != "" {
+		db = db.Where("LOWER(name) LIKE ? OR LOWER(sku) LIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+	if category != "" && category != "Semua" {
+		db = db.Where("category = ?", category)
+	}
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+	var products []models.Product
+	err := db.Order("id desc").Offset(offset).Limit(limit).Find(&products).Error
+	return products, total, err
 }
 
 func (r *productRepository) GetByID(ctx context.Context, id uint) (*models.Product, error) {

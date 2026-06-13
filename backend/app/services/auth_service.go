@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/repositories"
 	"time"
@@ -205,12 +206,20 @@ func (s *authService) DeleteUser(ctx context.Context, id uint) error {
 		return models.NewAPIError(models.ErrNotFound, "User tidak ditemukan", 404)
 	}
 
+	// #5: Clear token before delete
+	user.Token = ""
+	user.TokenExpiresAt = nil
+	s.userRepo.Update(ctx, user)
+
 	return s.userRepo.Delete(ctx, id)
 }
 
 func generateToken() string {
 	b := make([]byte, 32)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		h := sha256.Sum256([]byte(fmt.Sprintf("%d", time.Now().UnixNano())))
+		return hex.EncodeToString(h[:])
+	}
 	h := sha256.Sum256(b)
 	return hex.EncodeToString(h[:])
 }

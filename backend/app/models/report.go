@@ -40,21 +40,27 @@ type CustomerReportResponse struct {
 }
 
 type ProfitLossItem struct {
-	Date        string `json:"date"`
-	Label       string `json:"label"`
-	Revenue     int    `json:"revenue"`
-	Cost        int    `json:"cost"`
-	Profit      int    `json:"profit"`
-	Margin      float64 `json:"margin"`
-	Transactions int   `json:"transactions"`
+	Date         string  `json:"date"`
+	Label        string  `json:"label"`
+	Revenue      int     `json:"revenue"`
+	Cost         int     `json:"cost"`
+	Expense      int     `json:"expense"`
+	Modal        int     `json:"modal"`
+	Profit       int     `json:"profit"`
+	NetProfit    int     `json:"net_profit"`
+	Margin       float64 `json:"margin"`
+	Transactions int     `json:"transactions"`
 }
 
 type ProfitLossSummary struct {
-	TotalRevenue     int     `json:"total_revenue"`
-	TotalCost       int     `json:"total_cost"`
-	TotalProfit     int     `json:"total_profit"`
-	AvgMargin       float64 `json:"avg_margin"`
-	TotalTransactions int   `json:"total_transactions"`
+	TotalRevenue      int     `json:"total_revenue"`
+	TotalCost         int     `json:"total_cost"`
+	TotalModal        int     `json:"total_modal"`
+	TotalExpense      int     `json:"total_expense"`
+	TotalProfit       int     `json:"total_profit"`
+	NetProfit         int     `json:"net_profit"`
+	AvgMargin         float64 `json:"avg_margin"`
+	TotalTransactions int     `json:"total_transactions"`
 }
 
 type ProfitLossResponse struct {

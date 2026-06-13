@@ -79,14 +79,15 @@ func (r *orderRepository) GetFiltered(ctx context.Context, query *models.OrderQu
 		return nil, 0, err
 	}
 
-	// Apply sorting
+	// Apply sorting (whitelist to prevent SQL injection)
+	allowedSortBy := map[string]bool{"created_at": true, "total": true, "invoice_number": true, "customer": true, "payment_method": true, "order_status": true}
 	sortBy := "created_at"
-	if query.SortBy != "" {
+	if allowedSortBy[query.SortBy] {
 		sortBy = query.SortBy
 	}
 	sortOrder := "desc"
-	if query.SortOrder != "" {
-		sortOrder = query.SortOrder
+	if query.SortOrder == "asc" {
+		sortOrder = "asc"
 	}
 	db = db.Order(sortBy + " " + sortOrder)
 

@@ -9,6 +9,7 @@ import (
 
 type SupplierService interface {
 	GetAll(ctx context.Context) ([]models.Supplier, error)
+	GetAllPaginated(ctx context.Context, page, limit int, search string) ([]models.Supplier, int64, error)
 	GetByID(ctx context.Context, id uint) (*models.Supplier, error)
 	Create(ctx context.Context, req *models.CreateSupplierRequest) (*models.Supplier, error)
 	Update(ctx context.Context, id uint, req *models.UpdateSupplierRequest) (*models.Supplier, error)
@@ -25,6 +26,10 @@ func NewSupplierService(repo repositories.SupplierRepository) SupplierService {
 
 func (s *supplierService) GetAll(ctx context.Context) ([]models.Supplier, error) {
 	return s.repo.GetAll(ctx)
+}
+
+func (s *supplierService) GetAllPaginated(ctx context.Context, page, limit int, search string) ([]models.Supplier, int64, error) {
+	return s.repo.GetAllPaginated(ctx, page, limit, search)
 }
 
 func (s *supplierService) GetByID(ctx context.Context, id uint) (*models.Supplier, error) {

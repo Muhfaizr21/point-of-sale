@@ -30,6 +30,7 @@ type Product struct {
 
 type CreateProductRequest struct {
 	Name       string             `json:"name"`
+	SKU        string             `json:"sku"`
 	Category   string             `json:"category"`
 	Price      int                `json:"price"`
 	CostPrice  int                `json:"cost_price"`
@@ -41,6 +42,7 @@ type CreateProductRequest struct {
 
 type UpdateProductRequest struct {
 	Name       string             `json:"name"`
+	SKU        string             `json:"sku"`
 	Category   string             `json:"category"`
 	Price      int                `json:"price"`
 	CostPrice  int                `json:"cost_price"`

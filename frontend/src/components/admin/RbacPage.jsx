@@ -11,6 +11,8 @@ const ALL_FEATURES = [
   { id: 'bundel', label: 'Paket Bundling', group: 'Manajemen' },
   { id: 'transaksi', label: 'Transaksi', group: 'Aktivitas & Data' },
   { id: 'laporan', label: 'Laporan', group: 'Aktivitas & Data' },
+  { id: 'modal', label: 'Modal', group: 'Aktivitas & Data' },
+  { id: 'pengeluaran', label: 'Pengeluaran', group: 'Aktivitas & Data' },
   { id: 'promo', label: 'Promo Diskon', group: 'Sistem' },
   { id: 'stok', label: 'Manajemen Stok', group: 'Sistem' },
   { id: 'supplier', label: 'Supplier', group: 'Sistem' },

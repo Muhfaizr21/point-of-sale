@@ -94,13 +94,24 @@ export function SettingsPage({ onToggleSidebar, onSettingsChange }) {
       service_charge_enabled: serviceChargeEnabled, service_charge_rate: serviceChargeRate,
       rounding,
     }))
+    // Only store public keys in localStorage
     localStorage.setItem('integrationSettings', JSON.stringify({
       midtrans: {
         enabled: midtransEnabled, client_key: midtransClientKey,
-        server_key: midtransServerKey, merchant_id: midtransMerchantId,
+        merchant_id: midtransMerchantId,
         environment: midtransEnv,
       },
     }))
+    // Store sensitive keys (server_key) on backend only
+    import('../../services/apiClient').then(({ apiClient }) => {
+      apiClient.put('/api/settings/midtrans_config', {
+        server_key: midtransServerKey,
+        client_key: midtransClientKey,
+        merchant_id: midtransMerchantId,
+        environment: midtransEnv,
+        enabled: midtransEnabled,
+      }).catch(() => {})
+    })
 
     if (onSettingsChange) onSettingsChange()
     showNotif('success', 'Pengaturan berhasil disimpan!', 'Semua perubahan telah diterapkan.')
@@ -108,6 +119,10 @@ export function SettingsPage({ onToggleSidebar, onSettingsChange }) {
 
   const togglePayment = (id) => {
     setPaymentMethods(prev => prev.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p))
+  }
+
+  const updatePayment = (id, field, value) => {
+    setPaymentMethods(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p))
   }
 
   const addPaymentMethod = () => {

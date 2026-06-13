@@ -77,11 +77,19 @@ export function TransaksiPage({ onToggleSidebar }) {
     }).format(date)
   }
 
+  // Get local date string in YYYY-MM-DD format (timezone-safe)
+  const getLocalDateString = useCallback((dateObj) => {
+    const d = new Date(dateObj)
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }, [])
+
   // Get date range for filter
   const getDateRange = useCallback(() => {
     const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const todayStr = today.toISOString().split('T')[0]
+    const todayStr = getLocalDateString(today)
 
     let dateFrom = ''
     let dateTo = ''
@@ -94,19 +102,19 @@ export function TransaksiPage({ onToggleSidebar }) {
       case 'yesterday':
         const yesterday = new Date(today)
         yesterday.setDate(yesterday.getDate() - 1)
-        dateFrom = yesterday.toISOString().split('T')[0]
+        dateFrom = getLocalDateString(yesterday)
         dateTo = dateFrom
         break
       case 'week':
         const weekAgo = new Date(today)
         weekAgo.setDate(weekAgo.getDate() - 7)
-        dateFrom = weekAgo.toISOString().split('T')[0]
+        dateFrom = getLocalDateString(weekAgo)
         dateTo = todayStr
         break
       case 'month':
         const monthAgo = new Date(today)
         monthAgo.setMonth(monthAgo.getMonth() - 1)
-        dateFrom = monthAgo.toISOString().split('T')[0]
+        dateFrom = getLocalDateString(monthAgo)
         dateTo = todayStr
         break
       case 'all':
@@ -119,7 +127,7 @@ export function TransaksiPage({ onToggleSidebar }) {
     }
 
     return { dateFrom, dateTo }
-  }, [dateRange])
+  }, [dateRange, getLocalDateString])
 
   // Fetch orders with filters
   const fetchOrders = useCallback(async (page = 1) => {
@@ -162,9 +170,18 @@ export function TransaksiPage({ onToggleSidebar }) {
   }, [checkoutVersion])
 
   useEffect(() => {
-    const handle = () => setCheckoutVersion(v => v + 1)
-    window.addEventListener('checkout-success', handle)
-    return () => window.removeEventListener('checkout-success', handle)
+    const refresh = () => setCheckoutVersion(v => v + 1)
+    window.addEventListener('checkout-success', refresh)
+    const interval = setInterval(refresh, 30000)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      window.removeEventListener('checkout-success', refresh)
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [])
 
   // Refetch when filters change (with debounce for search)

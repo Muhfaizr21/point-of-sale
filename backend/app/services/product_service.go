@@ -13,6 +13,7 @@ import (
 
 type ProductService interface {
 	GetAllProducts(ctx context.Context) ([]models.Product, error)
+	GetAllProductsPaginated(ctx context.Context, page, limit int, search, category string) ([]models.Product, int64, error)
 	GetProductByID(ctx context.Context, id uint) (*models.Product, error)
 	CreateProduct(ctx context.Context, req *models.CreateProductRequest) (*models.Product, error)
 	UpdateProduct(ctx context.Context, id uint, req *models.UpdateProductRequest) (*models.Product, error)
@@ -31,6 +32,10 @@ func (s *productService) GetAllProducts(ctx context.Context) ([]models.Product, 
 	return s.repo.GetAll(ctx)
 }
 
+func (s *productService) GetAllProductsPaginated(ctx context.Context, page, limit int, search, category string) ([]models.Product, int64, error) {
+	return s.repo.GetAllPaginated(ctx, page, limit, search, category)
+}
+
 func (s *productService) GetProductByID(ctx context.Context, id uint) (*models.Product, error) {
 	return s.repo.GetByID(ctx, id)
 }
@@ -40,7 +45,10 @@ func (s *productService) CreateProduct(ctx context.Context, req *models.CreatePr
 		return nil, err
 	}
 
-	sku := s.generateSKU(req.Name)
+	sku := req.SKU
+	if sku == "" {
+		sku = s.generateSKU(req.Name)
+	}
 	// Check unique SKU
 	existing, err := s.repo.GetBySKU(ctx, sku)
 	if err != nil {
@@ -49,7 +57,7 @@ func (s *productService) CreateProduct(ctx context.Context, req *models.CreatePr
 	if existing != nil {
 		b := make([]byte, 2)
 		rand.Read(b)
-		sku = fmt.Sprintf("%s-%s", sku, hex.EncodeToString(b))
+		sku = fmt.Sprintf("%s-%s", s.generateSKU(req.Name), hex.EncodeToString(b))
 	}
 
 	stock := req.Stock
@@ -85,9 +93,24 @@ func (s *productService) UpdateProduct(ctx context.Context, id uint, req *models
 	// If name changed, we can keep SKU or update it. Let's keep it or regenerate if name is updated.
 	// To prevent URL/invoice breaks, we usually keep the original SKU or only update if explicitly wanted.
 	// Let's regenerate if name changed
-	if product.Name != req.Name {
-		product.SKU = s.generateSKU(req.Name)
-	}
+	if req.SKU != "" && req.SKU != product.SKU {
+		existing, _ := s.repo.GetBySKU(ctx, req.SKU)
+		if existing != nil && existing.ID != product.ID {
+			return nil, models.NewAPIError(models.ErrDuplicateSKU, "SKU sudah digunakan oleh produk lain", 400)
+		}
+		product.SKU = req.SKU
+	} else if req.SKU == "" && product.Name != req.Name {
+		newSku := s.generateSKU(req.Name)
+		existing, _ := s.repo.GetBySKU(ctx, newSku)
+		if existing != nil && existing.ID != product.ID {
+			b := make([]byte, 2)
+			rand.Read(b)
+			newSku = fmt.Sprintf("%s-%s", newSku, hex.EncodeToString(b))
+		}
+		product.SKU = newSku
+	} else if req.SKU != "" {
+        product.SKU = req.SKU
+    }
 
 	product.Name = req.Name
 	product.Category = req.Category

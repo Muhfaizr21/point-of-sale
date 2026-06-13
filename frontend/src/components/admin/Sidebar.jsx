@@ -1,11 +1,12 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import defaultLogo from '../../assets/pekalipan-logo.jpg'
 
 
 export function Sidebar({ isOpen, onClose, currentTab, onTabSelect, storeName, storeLogo, storeAddress }) {
   const { user, hardLogout } = useAuth()
+  const navigate = useNavigate()
   const isOwner = user?.role === 'owner'
 
   const city = React.useMemo(() => {
@@ -36,6 +37,8 @@ export function Sidebar({ isOpen, onClose, currentTab, onTabSelect, storeName, s
         { id: 'pesanan', label: 'Pesanan', icon: 'list_alt' },
         { id: 'transaksi', label: 'Transaksi', icon: 'receipt_long' },
         { id: 'laporan', label: 'Laporan', icon: 'analytics' },
+        { id: 'modal', label: 'Modal', icon: 'savings' },
+        { id: 'pengeluaran', label: 'Pengeluaran', icon: 'money_off' },
       ]
     },
     {
@@ -161,8 +164,8 @@ export function Sidebar({ isOpen, onClose, currentTab, onTabSelect, storeName, s
           <div
             role="button"
             tabIndex={0}
-            onClick={() => hardLogout()}
-            onKeyDown={(e) => { if (e.key === 'Enter') hardLogout() }}
+            onClick={() => { hardLogout(); navigate('/login', { replace: true }) }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { hardLogout(); navigate('/login', { replace: true }) } }}
             className="flex items-center justify-center gap-2 py-2 text-label-sm font-medium text-on-surface-variant hover:text-error hover:bg-error/5 transition-colors cursor-pointer select-none"
           >
             <span className="material-symbols-outlined text-[16px]">logout</span>

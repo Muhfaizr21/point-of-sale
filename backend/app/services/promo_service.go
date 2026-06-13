@@ -271,6 +271,9 @@ func (s *promoService) evaluateSinglePrompt(promo *models.Promo, items []models.
 func (s *promoService) evaluateBOGO(promo *models.Promo, items []models.OrderItem) int {
 	targetQty := 0
 	for _, item := range items {
+		if item.IsBundle || item.ProductID == 0 {
+			continue // #6: skip bundle items
+		}
 		if len(promo.ProductIDs) == 0 {
 			targetQty += item.Quantity
 		} else {
@@ -309,6 +312,9 @@ func (s *promoService) evaluateBOGO(promo *models.Promo, items []models.OrderIte
 
 	cheapestPrice := int(^uint(0) >> 1)
 	for _, item := range items {
+		if item.IsBundle || item.ProductID == 0 {
+			continue
+		}
 		if item.Price < cheapestPrice {
 			cheapestPrice = item.Price
 		}

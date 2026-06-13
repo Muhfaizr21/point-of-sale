@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import logoSentrakas from '../../assets/Sentrakas.png'
 import { useAuth } from '../../context/AuthContext'
 
 export function LoginPage() {
   const { user, login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const from = location.state?.from?.pathname || '/kasir'
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -14,9 +16,9 @@ export function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate('/dashboard')
+      navigate(from, { replace: true })
     }
-  }, [user, navigate])
+  }, [user, navigate, from])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -28,7 +30,7 @@ export function LoginPage() {
     setLoading(true)
     try {
       await login(username, password)
-      navigate('/dashboard')
+      navigate(from, { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {
