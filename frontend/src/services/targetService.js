@@ -1,17 +1,20 @@
 import { apiClient } from './apiClient'
 
+const qs = (branchId) => branchId ? `?branch_id=${branchId}` : ''
+
 export const targetService = {
-  getAll: async () => {
-    return apiClient.get('/api/targets')
+  getAll: async (branchId) => {
+    return apiClient.get(`/api/targets${qs(branchId)}`)
   },
-  getByDate: async (date) => {
-    return apiClient.get(`/api/targets/${date}`)
+  getByDate: async (date, branchId) => {
+    return apiClient.get(`/api/targets/${date}${qs(branchId)}`)
   },
-  upsert: async (targetData) => {
-    return apiClient.post('/api/targets', targetData)
+  upsert: async (targetData, branchId) => {
+    const url = branchId ? `/api/targets?branch_id=${branchId}` : '/api/targets'
+    return apiClient.post(url, targetData)
   },
-  delete: async (date) => {
-    return apiClient.delete(`/api/targets/${date}`)
+  delete: async (date, branchId) => {
+    return apiClient.delete(`/api/targets/${date}${qs(branchId)}`)
   }
 }
 

@@ -7,7 +7,7 @@ export function LoginPage() {
   const { user, login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const from = location.state?.from?.pathname || '/kasir'
+  const from = location.state?.from?.pathname || '/merchant/kasir'
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -16,7 +16,13 @@ export function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      navigate(from, { replace: true })
+      let target = from
+      if (user.role === 'superadmin') {
+        target = '/superadmin'
+      } else if (from.startsWith('/superadmin')) {
+        target = '/merchant/dashboard'
+      }
+      navigate(target, { replace: true })
     }
   }, [user, navigate, from])
 
@@ -28,16 +34,16 @@ export function LoginPage() {
       return
     }
 
-    // Bypass login khusus Superadmin (SaaS Mode Mockup)
-    if (username === 'superadmin@sentrakas.com' && password === 'superadmin123') {
-      navigate('/superadmin', { replace: true })
-      return
-    }
-
     setLoading(true)
     try {
-      await login(username, password)
-      navigate(from, { replace: true })
+      const loggedUser = await login(username, password)
+      let target = from
+      if (loggedUser?.role === 'superadmin') {
+        target = '/superadmin'
+      } else if (from.startsWith('/superadmin')) {
+        target = '/merchant/dashboard'
+      }
+      navigate(target, { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -164,7 +170,16 @@ export function LoginPage() {
             </button>
           </form>
 
-          <div className="text-center mt-10">
+          <div className="text-center mt-10 space-y-4">
+            <p className="text-body-md text-on-surface-variant">
+              Belum punya akun?{' '}
+              <button 
+                onClick={() => navigate('/register')}
+                className="text-primary font-bold hover:underline transition-all"
+              >
+                Daftar sekarang
+              </button>
+            </p>
             <p className="text-label-sm text-on-surface-variant/60 font-medium">SentraKas POS System v1.0 &copy; 2026</p>
           </div>
         </div>

@@ -8,7 +8,7 @@ import (
 )
 
 type BundleService interface {
-	GetAllBundles(ctx context.Context, branchID *uint) ([]models.Bundle, error)
+	GetAllBundles(ctx context.Context, branchID *uint, merchantID *uint) ([]models.Bundle, error)
 	GetBundleByID(ctx context.Context, id uint) (*models.Bundle, error)
 	CreateBundle(ctx context.Context, req *models.CreateBundleRequest) (*models.Bundle, error)
 	UpdateBundle(ctx context.Context, id uint, req *models.UpdateBundleRequest) (*models.Bundle, error)
@@ -24,8 +24,8 @@ func NewBundleService(bundleRepo repositories.BundleRepository) BundleService {
 	return &bundleService{bundleRepo: bundleRepo}
 }
 
-func (s *bundleService) GetAllBundles(ctx context.Context, branchID *uint) ([]models.Bundle, error) {
-	return s.bundleRepo.GetAll(ctx, branchID)
+func (s *bundleService) GetAllBundles(ctx context.Context, branchID *uint, merchantID *uint) ([]models.Bundle, error) {
+	return s.bundleRepo.GetAll(ctx, branchID, merchantID)
 }
 
 func (s *bundleService) GetBundleByID(ctx context.Context, id uint) (*models.Bundle, error) {

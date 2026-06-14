@@ -55,6 +55,10 @@ func main() {
 	expenseRepo := repositories.NewExpenseRepository(DB)
 	branchRepo := repositories.NewBranchRepository(DB)
 	productBranchRepo := repositories.NewProductBranchRepository(DB)
+	subscriptionRepo := repositories.NewSubscriptionRepository(DB)
+	broadcastRepo := repositories.NewBroadcastRepository(DB)
+	integrationRepo := repositories.NewIntegrationRepository(DB)
+	superadminRepo := repositories.NewSuperadminRepository(DB)
 
 	// Services
 	authService := services.NewAuthService(userRepo)
@@ -70,6 +74,12 @@ func main() {
 	reportService := services.NewReportService(DB)
 	expenseService := services.NewExpenseService(expenseRepo)
 	branchService := services.NewBranchService(branchRepo, productBranchRepo)
+	merchantRepo := repositories.NewMerchantRepository(DB)
+	merchantService := services.NewMerchantService(merchantRepo)
+	subscriptionService := services.NewSubscriptionService(subscriptionRepo)
+	broadcastService := services.NewBroadcastService(broadcastRepo)
+	integrationService := services.NewIntegrationService(integrationRepo)
+	superadminService := services.NewSuperadminService(superadminRepo)
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -88,6 +98,11 @@ func main() {
 	expenseHandler := handlers.NewExpenseHandler(expenseService)
 	settingHandler := handlers.NewSettingHandler(DB)
 	branchHandler := handlers.NewBranchHandler(branchService, productBranchRepo)
+	merchantHandler := handlers.NewMerchantHandler(merchantService)
+	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionService)
+	broadcastHandler := handlers.NewBroadcastHandler(broadcastService)
+	integrationHandler := handlers.NewIntegrationHandler(integrationService)
+	superadminHandler := handlers.NewSuperadminHandler(superadminService)
 
 	// #17: Rate limiter (60 req/min for login, 300 req/min for others)
 	loginLimiter := middleware.NewRateLimiter(10, 1*time.Minute) // 10 login attempts/min
@@ -197,11 +212,72 @@ func main() {
 	mux.HandleFunc("GET /api/branches/{id}/products", branchHandler.GetProductPrices)
 	mux.Handle("POST /api/branches/{id}/copy-products", middleware.RequireOwner(http.HandlerFunc(branchHandler.CopyProducts)))
 
-	promoSvc.DeactivateExpiredPromos(context.Background(), nil)
+	mux.Handle("GET /api/merchants", middleware.RequireSuperadmin(http.HandlerFunc(merchantHandler.GetAll)))
+	mux.Handle("GET /api/merchants/{id}", middleware.RequireSuperadmin(http.HandlerFunc(merchantHandler.GetByID)))
+	mux.Handle("POST /api/merchants", middleware.RequireSuperadmin(http.HandlerFunc(merchantHandler.Create)))
+	mux.Handle("PUT /api/merchants/{id}", middleware.RequireSuperadmin(http.HandlerFunc(merchantHandler.Update)))
 
-	// Apply global rate limiter then CORS, Recovery, Auth
+	// Subscription routes (superadmin only)
+	mux.Handle("GET /api/subscriptions/plans", middleware.RequireSuperadmin(http.HandlerFunc(subscriptionHandler.GetPlans)))
+	mux.Handle("POST /api/subscriptions/plans", middleware.RequireSuperadmin(http.HandlerFunc(subscriptionHandler.CreatePlan)))
+	mux.Handle("PUT /api/subscriptions/plans/{id}", middleware.RequireSuperadmin(http.HandlerFunc(subscriptionHandler.UpdatePlan)))
+	mux.Handle("GET /api/subscriptions", middleware.RequireSuperadmin(http.HandlerFunc(subscriptionHandler.GetSubscriptions)))
+	mux.Handle("POST /api/subscriptions/assign", middleware.RequireSuperadmin(http.HandlerFunc(subscriptionHandler.Assign)))
+	mux.HandleFunc("GET /api/subscriptions/my", subscriptionHandler.GetMySubscription)
+
+	// Broadcast routes
+	mux.Handle("GET /api/broadcasts", middleware.RequireSuperadmin(http.HandlerFunc(broadcastHandler.GetAll)))
+	mux.Handle("POST /api/broadcasts", middleware.RequireSuperadmin(http.HandlerFunc(broadcastHandler.Create)))
+	mux.Handle("DELETE /api/broadcasts/{id}", middleware.RequireSuperadmin(http.HandlerFunc(broadcastHandler.Delete)))
+	mux.HandleFunc("GET /api/broadcasts/unread", broadcastHandler.GetUnread)
+	mux.HandleFunc("POST /api/broadcasts/{id}/read", broadcastHandler.MarkRead)
+
+	// Integration routes
+	mux.Handle("GET /api/integrations", middleware.RequireSuperadmin(http.HandlerFunc(integrationHandler.GetAll)))
+	mux.Handle("PUT /api/integrations/{merchant_id}/{app}", middleware.RequireSuperadmin(http.HandlerFunc(integrationHandler.Upsert)))
+	mux.HandleFunc("GET /api/integrations/my", integrationHandler.GetMy)
+	mux.Handle("PUT /api/integrations/my/{app}", middleware.RequireOwner(http.HandlerFunc(integrationHandler.UpdateMy)))
+
+	// Superadmin routes
+	mux.Handle("GET /api/superadmin/revenue", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetRevenueDashboard)))
+	mux.Handle("GET /api/superadmin/orders", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetAllOrders)))
+	mux.Handle("GET /api/superadmin/orders/stats", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetOrderStats)))
+	mux.Handle("GET /api/superadmin/revenue/merchants", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetRevenuePerMerchant)))
+	mux.Handle("GET /api/superadmin/subscriptions/payments", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetPaymentTransactions)))
+	mux.Handle("GET /api/superadmin/subscriptions/payments/stats", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetPaymentStats)))
+	mux.Handle("GET /api/superadmin/health", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetSystemHealth)))
+	mux.Handle("GET /api/superadmin/demographics", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetDemographics)))
+	mux.Handle("GET /api/superadmin/export", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetExportData)))
+
+	// Audit + Settings + Maintenance + Contact routes
+	mux.Handle("GET /api/superadmin/audit-logs", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetAuditLogs)))
+	mux.Handle("GET /api/superadmin/platform-settings", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetPlatformSettings)))
+	mux.Handle("POST /api/superadmin/platform-settings", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.UpdatePlatformSetting)))
+	mux.Handle("GET /api/superadmin/maintenance", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetMaintenanceStatus)))
+	mux.Handle("POST /api/superadmin/maintenance", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.SetMaintenanceMode)))
+	mux.Handle("GET /api/superadmin/contacts", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetContactMessages)))
+	mux.Handle("PUT /api/superadmin/contacts/{id}/read", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.MarkContactRead)))
+	mux.Handle("DELETE /api/superadmin/contacts/{id}", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.DeleteContactMessage)))
+	mux.HandleFunc("POST /api/contact", superadminHandler.CreateContactMessage)
+
+	// Ticket routes (superadmin)
+	mux.Handle("GET /api/superadmin/tickets", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetTickets)))
+	mux.Handle("GET /api/superadmin/tickets/{id}", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.GetTicketDetail)))
+	mux.Handle("POST /api/superadmin/tickets/{id}/reply", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.ReplyTicket)))
+	mux.Handle("PUT /api/superadmin/tickets/{id}/close", middleware.RequireSuperadmin(http.HandlerFunc(superadminHandler.CloseTicket)))
+	// Ticket routes (merchant)
+	mux.HandleFunc("GET /api/tickets/my", superadminHandler.GetMyTickets)
+	mux.HandleFunc("POST /api/tickets", superadminHandler.CreateTicket)
+	mux.HandleFunc("GET /api/tickets/{id}", superadminHandler.GetMyTicketDetail)
+	mux.HandleFunc("POST /api/tickets/{id}/reply", superadminHandler.ReplyMyTicket)
+	mux.HandleFunc("PUT /api/tickets/{id}/close", superadminHandler.CloseMyTicket)
+
+	promoSvc.DeactivateExpiredPromos(context.Background(), nil, nil)
+
+	// Apply global rate limiter then CORS, Recovery, Auth, Maintenance
 	authMw := middleware.Authenticate(DB, "/api/auth/login", "/api/health", "/uploads/")
-	handler := middleware.CORS(middleware.Recovery(authMw(middleware.Logger(apiLimiter.Middleware(mux)))))
+	maintenanceMw := middleware.MaintenanceMode(DB, "/api/auth/login", "/api/contact", "/api/health")
+	handler := middleware.CORS(middleware.Recovery(authMw(maintenanceMw(middleware.Logger(apiLimiter.Middleware(mux))))))
 
 	port := getEnv("PORT", "8081")
 	server := &http.Server{
@@ -259,6 +335,7 @@ func runMigrations() {
 	}
 
 	err := DB.AutoMigrate(
+		&models.Merchant{},
 		&models.Category{},
 		&models.Product{},
 		&models.Order{},
@@ -275,6 +352,16 @@ func runMigrations() {
 		&models.Expense{},
 		&models.Branch{},
 		&models.ProductBranch{},
+		&models.SubscriptionPlan{},
+		&models.MerchantSubscription{},
+		&models.Broadcast{},
+		&models.BroadcastRead{},
+		&models.MerchantIntegration{},
+		&models.PaymentTransaction{},
+		&models.AuditLog{},
+		&models.ContactMessage{},
+		&models.Ticket{},
+		&models.TicketMessage{},
 	)
 	if err != nil {
 		log.Fatalf("Auto-migration failed: %v", err)
@@ -284,6 +371,23 @@ func runMigrations() {
 
 func seedDatabase() {
 	var branchOne uint = 1
+
+	var merchantCount int64
+	DB.Model(&models.Merchant{}).Count(&merchantCount)
+	if merchantCount == 0 {
+		DB.Create(&models.Merchant{Name: "PEKALIPAN", Code: "PKP", Email: "admin@pekalipan.com", Active: true})
+		log.Println("Default merchant seeded")
+	}
+
+	// Update existing data without merchant_id to merchant 1
+	var firstMerchant models.Merchant
+	DB.First(&firstMerchant)
+	mid := firstMerchant.ID
+	DB.Model(&models.Branch{}).Where("merchant_id IS NULL").Update("merchant_id", mid)
+	DB.Model(&models.User{}).Where("merchant_id IS NULL AND role != ?", "superadmin").Update("merchant_id", mid)
+	DB.Model(&models.Product{}).Where("merchant_id IS NULL").Update("merchant_id", mid)
+	DB.Model(&models.Category{}).Where("merchant_id IS NULL").Update("merchant_id", mid)
+	DB.Model(&models.Order{}).Where("merchant_id IS NULL").Update("merchant_id", mid)
 
 	var countCat int64
 	DB.Model(&models.Category{}).Count(&countCat)
@@ -336,10 +440,9 @@ func seedDatabase() {
 		if err != nil {
 			log.Fatalf("Failed to hash kasir password: %v", err)
 		}
-
 		defaultUsers := []models.User{
-			{Username: "admin", Password: string(adminHash), Role: "owner", Name: "Admin Utama"},
-			{Username: "kasir", Password: string(kasirHash), Role: "cashier", Name: "Kasir"},
+			{Username: "admin", Password: string(adminHash), Role: "owner", Name: "Admin Utama", MerchantID: &firstMerchant.ID},
+			{Username: "kasir", Password: string(kasirHash), Role: "cashier", Name: "Kasir", MerchantID: &firstMerchant.ID},
 		}
 		for _, u := range defaultUsers {
 			if err := DB.Create(&u).Error; err != nil {
@@ -349,12 +452,64 @@ func seedDatabase() {
 		log.Println("Database seeded with default users")
 	}
 
+	var superCount int64
+	// Ensure superadmin has NO merchant_id (platform-level user)
+	DB.Exec("UPDATE users SET merchant_id = NULL WHERE role = ?", "superadmin")
+
+	DB.Model(&models.User{}).Where("role = ?", "superadmin").Count(&superCount)
+	if superCount == 0 {
+		superHash, err := bcrypt.GenerateFromPassword([]byte("superadmin123"), bcrypt.DefaultCost)
+		if err == nil {
+			DB.Create(&models.User{
+				Username: "superadmin@sentrakas.com",
+				Password: string(superHash),
+				Role:     "superadmin",
+				Name:     "Super Admin",
+			})
+			log.Println("Superadmin user created")
+		}
+	}
+
+	// Auto-assign merchant_id to any users/records that still have NULL merchant_id
+	var anyMerchant models.Merchant
+	if err := DB.First(&anyMerchant).Error; err == nil {
+		mid2 := anyMerchant.ID
+		DB.Model(&models.User{}).Where("merchant_id IS NULL AND role != ?", "superadmin").Update("merchant_id", mid2)
+		DB.Model(&models.Branch{}).Where("merchant_id IS NULL").Update("merchant_id", mid2)
+		DB.Model(&models.Product{}).Where("merchant_id IS NULL").Update("merchant_id", mid2)
+		DB.Model(&models.Category{}).Where("merchant_id IS NULL").Update("merchant_id", mid2)
+		DB.Model(&models.Order{}).Where("merchant_id IS NULL").Update("merchant_id", mid2)
+		DB.Model(&models.Expense{}).Where("merchant_id IS NULL").Update("merchant_id", mid2)
+		DB.Model(&models.Bundle{}).Where("merchant_id IS NULL").Update("merchant_id", mid2)
+		DB.Model(&models.Promo{}).Where("merchant_id IS NULL").Update("merchant_id", mid2)
+		DB.Model(&models.Supplier{}).Where("merchant_id IS NULL").Update("merchant_id", mid2)
+		DB.Model(&models.DailyTarget{}).Where("merchant_id IS NULL").Update("merchant_id", mid2)
+		DB.Model(&models.Customer{}).Where("merchant_id IS NULL").Update("merchant_id", mid2)
+	}
+
+	// Seed subscription plans
+	var planCount int64
+	DB.Model(&models.SubscriptionPlan{}).Count(&planCount)
+	if planCount == 0 {
+		plans := []models.SubscriptionPlan{
+			{Name: "Basic", Code: "BASIC", PriceMonthly: 0, PriceYearly: 0, MaxBranches: 1, MaxUsers: 2, Features: []string{"1 toko", "2 pengguna", "Laporan dasar", "Dukungan email"}, Active: true},
+			{Name: "Pro", Code: "PRO", PriceMonthly: 150000, PriceYearly: 1500000, MaxBranches: 5, MaxUsers: 10, Features: []string{"5 toko", "10 pengguna", "Laporan lengkap", "Multi-cabang", "Dukungan prioritas"}, Active: true},
+			{Name: "Enterprise", Code: "ENT", PriceMonthly: 500000, PriceYearly: 5000000, MaxBranches: 100, MaxUsers: 999, Features: []string{"100+ toko", "Unlimited pengguna", "Laporan custom", "API access", "Dedicated support", "White-label"}, Active: true},
+		}
+		for _, p := range plans { DB.Create(&p) }
+		log.Println("Subscription plans seeded")
+	}
+
 	var branchCount int64
 	DB.Model(&models.Branch{}).Count(&branchCount)
 	if branchCount == 0 {
+		var firstMerchant models.Merchant
+		DB.First(&firstMerchant)
+		mid := firstMerchant.ID
+
 		defaultBranches := []models.Branch{
-			{Name: "Cabang Pusat", Code: "PST", Address: "Jl. Pekalipan No. 99", Phone: "081234567890", City: "Cirebon", Active: true},
-			{Name: "Cabang Cirebon", Code: "CBR", Address: "Jl. Siliwangi No. 10", Phone: "081234567891", City: "Cirebon", Active: true},
+			{Name: "Cabang Pusat", Code: "PST", Address: "Jl. Pekalipan No. 99", Phone: "081234567890", City: "Cirebon", Active: true, MerchantID: &mid},
+			{Name: "Cabang Cirebon", Code: "CBR", Address: "Jl. Siliwangi No. 10", Phone: "081234567891", City: "Cirebon", Active: true, MerchantID: &mid},
 		}
 		for _, b := range defaultBranches {
 			if err := DB.Create(&b).Error; err != nil {
@@ -385,6 +540,7 @@ func seedDatabase() {
 					CostPrice:  p.CostPrice,
 					Stock:      branchStock,
 					TrackStock: p.TrackStock,
+					MerchantID: &mid,
 				}
 				DB.Create(&pb)
 			}
@@ -403,6 +559,16 @@ func seedDatabase() {
 		DB.Model(&models.Bundle{}).Where("branch_id IS NULL").Update("branch_id", firstBranch2.ID)
 		DB.Model(&models.Promo{}).Where("branch_id IS NULL").Update("branch_id", firstBranch2.ID)
 		DB.Model(&models.Supplier{}).Where("branch_id IS NULL").Update("branch_id", firstBranch2.ID)
+		DB.Model(&models.Product{}).Where("branch_id IS NULL").Update("branch_id", firstBranch2.ID)
+		DB.Model(&models.Category{}).Where("branch_id IS NULL").Update("branch_id", firstBranch2.ID)
+		DB.Model(&models.DailyTarget{}).Where("branch_id IS NULL").Update("branch_id", firstBranch2.ID)
+		// Drop old global unique indexes (GORM auto-named)
+		for _, name := range []string{"idx_categories_name", "uix_categories_name", "uni_categories_name"} {
+			DB.Migrator().DropIndex(&models.Category{}, name)
+		}
+		for _, name := range []string{"idx_daily_targets_date", "uix_daily_targets_date", "uni_daily_targets_date"} {
+			DB.Migrator().DropIndex(&models.DailyTarget{}, name)
+		}
 	}
 }
 

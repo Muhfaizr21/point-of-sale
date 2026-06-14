@@ -9,10 +9,10 @@ import (
 )
 
 type TargetRepository interface {
-	GetAll(ctx context.Context) ([]models.DailyTarget, error)
-	GetByDate(ctx context.Context, date string) (*models.DailyTarget, error)
+	GetAll(ctx context.Context, branchID *uint, merchantID *uint) ([]models.DailyTarget, error)
+	GetByDate(ctx context.Context, date string, branchID *uint, merchantID *uint) (*models.DailyTarget, error)
 	Upsert(ctx context.Context, target *models.DailyTarget) error
-	Delete(ctx context.Context, date string) error
+	Delete(ctx context.Context, date string, branchID *uint) error
 }
 
 type targetRepository struct {
@@ -23,18 +23,32 @@ func NewTargetRepository(db *gorm.DB) TargetRepository {
 	return &targetRepository{db: db}
 }
 
-func (r *targetRepository) GetAll(ctx context.Context) ([]models.DailyTarget, error) {
+func (r *targetRepository) GetAll(ctx context.Context, branchID *uint, merchantID *uint) ([]models.DailyTarget, error) {
 	var targets []models.DailyTarget
-	err := r.db.WithContext(ctx).Order("date desc").Find(&targets).Error
+	db := r.db.WithContext(ctx).Order("date desc")
+	if branchID != nil {
+		db = db.Where("branch_id = ?", *branchID)
+	}
+	if merchantID != nil {
+		db = db.Where("merchant_id = ?", *merchantID)
+	}
+	err := db.Find(&targets).Error
 	return targets, err
 }
 
-func (r *targetRepository) GetByDate(ctx context.Context, date string) (*models.DailyTarget, error) {
+func (r *targetRepository) GetByDate(ctx context.Context, date string, branchID *uint, merchantID *uint) (*models.DailyTarget, error) {
 	var target models.DailyTarget
-	err := r.db.WithContext(ctx).Where("date = ?", date).First(&target).Error
+	db := r.db.WithContext(ctx).Where("date = ?", date)
+	if branchID != nil {
+		db = db.Where("branch_id = ?", *branchID)
+	}
+	if merchantID != nil {
+		db = db.Where("merchant_id = ?", *merchantID)
+	}
+	err := db.First(&target).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, nil // Return nil, nil when not found to easily handle default fallback
+			return nil, nil
 		}
 		return nil, err
 	}
@@ -42,20 +56,23 @@ func (r *targetRepository) GetByDate(ctx context.Context, date string) (*models.
 }
 
 func (r *targetRepository) Upsert(ctx context.Context, target *models.DailyTarget) error {
-	// GORM Clause OnConflict allows upserting by unique index `date`
 	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "date"}},
+		Columns:   []clause.Column{{Name: "date"}, {Name: "branch_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"revenue_target", "transaction_target", "updated_at"}),
 	}).Create(target).Error
 }
 
-func (r *targetRepository) Delete(ctx context.Context, date string) error {
-	result := r.db.WithContext(ctx).Where("date = ?", date).Delete(&models.DailyTarget{})
+func (r *targetRepository) Delete(ctx context.Context, date string, branchID *uint) error {
+	db := r.db.WithContext(ctx).Where("date = ?", date)
+	if branchID != nil {
+		db = db.Where("branch_id = ?", *branchID)
+	}
+	result := db.Delete(&models.DailyTarget{})
 	if result.Error != nil {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return models.NewAPIError(models.ErrNotFound, "Target tidak ditemukan untuk tanggal tersebut", 404)
+		return models.NewAPIError(models.ErrNotFound, "Target tidak ditemukan", 404)
 	}
 	return nil
 }

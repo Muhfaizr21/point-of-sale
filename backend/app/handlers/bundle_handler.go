@@ -19,10 +19,18 @@ func NewBundleHandler(service services.BundleService) *BundleHandler {
 
 func (h *BundleHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	var branchID *uint
-	if user := middleware.GetUser(r); user != nil {
-		branchID = user.BranchID
+	if bid := r.URL.Query().Get("branch_id"); bid != "" {
+		if id, err := strconv.ParseUint(bid, 10, 32); err == nil {
+			uid := uint(id); branchID = &uid
+		}
 	}
-	bundles, err := h.service.GetAllBundles(r.Context(), branchID)
+	if branchID == nil {
+		if user := middleware.GetUser(r); user != nil {
+			branchID = user.BranchID
+		}
+	}
+	merchantID := getMerchantID(r)
+	bundles, err := h.service.GetAllBundles(r.Context(), branchID, merchantID)
 	if err != nil {
 		models.WriteError(w, err)
 		return
@@ -54,8 +62,20 @@ func (h *BundleHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.BranchID == nil {
+		if bid := r.URL.Query().Get("branch_id"); bid != "" {
+			if id, err := strconv.ParseUint(bid, 10, 32); err == nil {
+				uid := uint(id); req.BranchID = &uid
+			}
+		}
+	}
+	if req.BranchID == nil {
 		if user := middleware.GetUser(r); user != nil {
 			req.BranchID = user.BranchID
+		}
+	}
+	if req.MerchantID == nil {
+		if user := middleware.GetUser(r); user != nil {
+			req.MerchantID = user.MerchantID
 		}
 	}
 	bundle, err := h.service.CreateBundle(r.Context(), &req)
@@ -75,6 +95,16 @@ func (h *BundleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "ID bundle tidak valid", 400))
 		return
 	}
+	existing, err := h.service.GetBundleByID(r.Context(), uint(id))
+	if err != nil {
+		models.WriteError(w, err)
+		return
+	}
+	if user := middleware.GetUser(r); user != nil && user.BranchID != nil && existing.BranchID != nil && *existing.BranchID != *user.BranchID {
+		models.WriteError(w, models.NewAPIError(models.ErrForbidden, "Data ini bukan milik cabang Anda", 403))
+		return
+	}
+
 	var req models.UpdateBundleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format input tidak valid", 400))
@@ -96,6 +126,16 @@ func (h *BundleHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "ID bundle tidak valid", 400))
 		return
 	}
+	existing, err := h.service.GetBundleByID(r.Context(), uint(id))
+	if err != nil {
+		models.WriteError(w, err)
+		return
+	}
+	if user := middleware.GetUser(r); user != nil && user.BranchID != nil && existing.BranchID != nil && *existing.BranchID != *user.BranchID {
+		models.WriteError(w, models.NewAPIError(models.ErrForbidden, "Data ini bukan milik cabang Anda", 403))
+		return
+	}
+
 	err = h.service.DeleteBundle(r.Context(), uint(id))
 	if err != nil {
 		models.WriteError(w, err)

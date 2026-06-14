@@ -34,7 +34,8 @@ export function useProducts(branchId) {
     setLoading(true)
     setError(null)
     try {
-      await apiClient.post('/api/products', {
+      const url = branchId ? `/api/products?branch_id=${branchId}` : '/api/products'
+      await apiClient.post(url, {
         name: product.name,
         category: product.category,
         price: product.price,

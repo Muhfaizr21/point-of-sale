@@ -23,6 +23,7 @@ func (h *CustomerHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
 
+	// TODO: pass merchantID from getMerchantID(r) once CustomerService.GetAll/GetAllPaginated support merchant_id filter
 	if page > 0 && limit > 0 {
 		list, total, err := h.svc.GetAllPaginated(r.Context(), page, limit, search)
 		if err != nil { models.WriteError(w, err); return }
@@ -57,6 +58,11 @@ func (h *CustomerHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format tidak valid", 400))
 		return
+	}
+	if req.MerchantID == nil {
+		if user := middleware.GetUser(r); user != nil {
+			req.MerchantID = user.MerchantID
+		}
 	}
 	c, err := h.svc.Create(r.Context(), &req)
 	if err != nil { models.WriteError(w, err); return }

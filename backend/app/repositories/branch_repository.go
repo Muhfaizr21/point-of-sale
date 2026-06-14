@@ -8,7 +8,7 @@ import (
 )
 
 type BranchRepository interface {
-	GetAll(ctx context.Context) ([]models.Branch, error)
+	GetAll(ctx context.Context, merchantID *uint) ([]models.Branch, error)
 	GetByID(ctx context.Context, id uint) (*models.Branch, error)
 	Create(ctx context.Context, b *models.Branch) (*models.Branch, error)
 	Update(ctx context.Context, b *models.Branch) error
@@ -23,9 +23,13 @@ func NewBranchRepository(db *gorm.DB) BranchRepository {
 	return &branchRepository{db: db}
 }
 
-func (r *branchRepository) GetAll(ctx context.Context) ([]models.Branch, error) {
+func (r *branchRepository) GetAll(ctx context.Context, merchantID *uint) ([]models.Branch, error) {
 	var list []models.Branch
-	err := r.db.WithContext(ctx).Order("id asc").Find(&list).Error
+	db := r.db.WithContext(ctx)
+	if merchantID != nil {
+		db = db.Where("merchant_id = ?", *merchantID)
+	}
+	err := db.Order("id asc").Find(&list).Error
 	return list, err
 }
 

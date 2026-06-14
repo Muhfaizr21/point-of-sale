@@ -162,8 +162,8 @@ export function PromoPage({ onToggleSidebar, activeBranch = null }) {
         product_ids: form.product_ids ? form.product_ids.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) : [],
         active: form.active,
       }
-      if (editing) await apiClient.put(`/api/promos/${editing.id}`, data)
-      else await apiClient.post('/api/promos', data)
+      if (editing) await apiClient.put(`/api/promos/${editing.id}${activeBranch ? `?branch_id=${activeBranch}` : ''}`, data)
+      else await apiClient.post(`/api/promos${activeBranch ? `?branch_id=${activeBranch}` : ''}`, data)
       await fetchPromos(); setIsModalOpen(false)
     } catch (err) { setFormError(err.message) }
     finally { setIsSubmitting(false) }
@@ -255,7 +255,7 @@ export function PromoPage({ onToggleSidebar, activeBranch = null }) {
                     <td className="p-md">
                       <button type="button" onClick={async () => {
                         try {
-                          await apiClient.put(`/api/promos/${promo.id}`, {
+                          await apiClient.put(`/api/promos/${promo.id}${activeBranch ? `?branch_id=${activeBranch}` : ''}`, {
                             name: promo.name, type: promo.type, value: promo.value,
                             min_amount: promo.min_amount, buy_qty: promo.buy_qty, free_qty: promo.free_qty,
                             free_product_id: promo.free_product_id, time_start: promo.time_start,

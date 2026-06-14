@@ -11,7 +11,7 @@ import (
 type OrderRepository interface {
 	Create(ctx context.Context, order *models.Order) (*models.Order, error)
 	GetAll(ctx context.Context) ([]models.Order, error)
-	GetFiltered(ctx context.Context, query *models.OrderQuery) ([]models.Order, int64, error)
+	GetFiltered(ctx context.Context, query *models.OrderQuery, merchantID *uint) ([]models.Order, int64, error)
 	GetByID(ctx context.Context, id uint) (*models.Order, error)
 	GetByCustomerID(ctx context.Context, customerID uint, branchID *uint) ([]models.Order, error)
 	Update(ctx context.Context, order *models.Order) error
@@ -45,7 +45,7 @@ func (r *orderRepository) GetByID(ctx context.Context, id uint) (*models.Order, 
 	return &order, err
 }
 
-func (r *orderRepository) GetFiltered(ctx context.Context, query *models.OrderQuery) ([]models.Order, int64, error) {
+func (r *orderRepository) GetFiltered(ctx context.Context, query *models.OrderQuery, merchantID *uint) ([]models.Order, int64, error) {
 	var orders []models.Order
 	var total int64
 
@@ -76,6 +76,10 @@ func (r *orderRepository) GetFiltered(ctx context.Context, query *models.OrderQu
 
 	if query.BranchID != nil {
 		db = db.Where("branch_id = ?", *query.BranchID)
+	}
+
+	if merchantID != nil {
+		db = db.Where("merchant_id = ?", *merchantID)
 	}
 
 	// Get total count before pagination

@@ -80,7 +80,7 @@ export function ModalPage({ onToggleSidebar, activeBranch = null }) {
     try {
       const payload = { date: formDate, description: 'Modal Harian', amount: amountVal, category: 'Modal', notes: formNotes.trim() }
       if (editingId) await apiClient.put(`/api/expenses/${editingId}`, payload)
-      else await apiClient.post('/api/expenses', payload)
+      else await apiClient.post(`/api/expenses${activeBranch ? `?branch_id=${activeBranch}` : ''}`, payload)
       setShowForm(false)
       resetForm()
       fetchEntries(pagination.page)

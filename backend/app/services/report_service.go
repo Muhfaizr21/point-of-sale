@@ -9,9 +9,9 @@ import (
 )
 
 type ReportService interface {
-	GetStockReport(ctx context.Context) (*models.StockReportResponse, error)
-	GetCustomerReport(ctx context.Context, dateFrom, dateTo string, branchID *uint) (*models.CustomerReportResponse, error)
-	GetProfitLoss(ctx context.Context, dateFrom, dateTo string, branchID *uint) (*models.ProfitLossResponse, error)
+	GetStockReport(ctx context.Context, branchID *uint, merchantID *uint) (*models.StockReportResponse, error)
+	GetCustomerReport(ctx context.Context, dateFrom, dateTo string, branchID *uint, merchantID *uint) (*models.CustomerReportResponse, error)
+	GetProfitLoss(ctx context.Context, dateFrom, dateTo string, branchID *uint, merchantID *uint) (*models.ProfitLossResponse, error)
 }
 
 type reportService struct {
@@ -22,9 +22,16 @@ func NewReportService(db *gorm.DB) ReportService {
 	return &reportService{db: db}
 }
 
-func (s *reportService) GetStockReport(ctx context.Context) (*models.StockReportResponse, error) {
+func (s *reportService) GetStockReport(ctx context.Context, branchID *uint, merchantID *uint) (*models.StockReportResponse, error) {
 	var products []models.Product
-	if err := s.db.WithContext(ctx).Unscoped().Order("name asc").Find(&products).Error; err != nil {
+	db := s.db.WithContext(ctx).Unscoped().Order("name asc")
+	if branchID != nil {
+		db = db.Where("branch_id = ?", *branchID)
+	}
+	if merchantID != nil {
+		db = db.Where("merchant_id = ?", *merchantID)
+	}
+	if err := db.Find(&products).Error; err != nil {
 		return nil, err
 	}
 
@@ -77,11 +84,15 @@ func (s *reportService) GetStockReport(ctx context.Context) (*models.StockReport
 	}, nil
 }
 
-func (s *reportService) GetCustomerReport(ctx context.Context, dateFrom, dateTo string, branchID *uint) (*models.CustomerReportResponse, error) {
+func (s *reportService) GetCustomerReport(ctx context.Context, dateFrom, dateTo string, branchID *uint, merchantID *uint) (*models.CustomerReportResponse, error) {
 	from, to := parseDateRange(dateFrom, dateTo)
 
 	var customers []models.Customer
-	if err := s.db.WithContext(ctx).Order("name asc").Find(&customers).Error; err != nil {
+	custDB := s.db.WithContext(ctx).Order("name asc")
+	if merchantID != nil {
+		custDB = custDB.Where("merchant_id = ?", *merchantID)
+	}
+	if err := custDB.Find(&customers).Error; err != nil {
 		return nil, err
 	}
 
@@ -96,6 +107,9 @@ func (s *reportService) GetCustomerReport(ctx context.Context, dateFrom, dateTo 
 			Where("customer_id = ? AND created_at >= ? AND created_at <= ? AND order_status IN ?", c.ID, from, to.AddDate(0, 0, 1), []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"})
 		if branchID != nil {
 			orderQuery = orderQuery.Where("branch_id = ?", *branchID)
+		}
+		if merchantID != nil {
+			orderQuery = orderQuery.Where("merchant_id = ?", *merchantID)
 		}
 		orderQuery.Select("COALESCE(COUNT(*), 0), COALESCE(MAX(created_at), '1970-01-01'::timestamp)").
 			Row().Scan(&orderCount, &lastOrder)
@@ -149,7 +163,7 @@ func (s *reportService) GetCustomerReport(ctx context.Context, dateFrom, dateTo 
 	}, nil
 }
 
-func (s *reportService) GetProfitLoss(ctx context.Context, dateFrom, dateTo string, branchID *uint) (*models.ProfitLossResponse, error) {
+func (s *reportService) GetProfitLoss(ctx context.Context, dateFrom, dateTo string, branchID *uint, merchantID *uint) (*models.ProfitLossResponse, error) {
 	from, to := parseDateRange(dateFrom, dateTo)
 
 	var orders []models.Order
@@ -163,6 +177,9 @@ func (s *reportService) GetProfitLoss(ctx context.Context, dateFrom, dateTo stri
 		Where("order_status IN ?", []string{"COMPLETED", "DIKEMAS", "DIKIRIM", "SELESAI"})
 	if branchID != nil {
 		dbQuery = dbQuery.Where("branch_id = ?", *branchID)
+	}
+	if merchantID != nil {
+		dbQuery = dbQuery.Where("merchant_id = ?", *merchantID)
 	}
 	err := dbQuery.Order("created_at asc").Find(&orders).Error
 	if err != nil {
@@ -179,6 +196,9 @@ func (s *reportService) GetProfitLoss(ctx context.Context, dateFrom, dateTo stri
 		Where("date >= ? AND date <= ?", from.Format("2006-01-02"), to.Format("2006-01-02"))
 	if branchID != nil {
 		expQuery = expQuery.Where("branch_id = ?", *branchID)
+	}
+	if merchantID != nil {
+		expQuery = expQuery.Where("merchant_id = ?", *merchantID)
 	}
 	expQuery.Find(&expenses)
 

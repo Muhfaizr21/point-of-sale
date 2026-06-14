@@ -2,6 +2,7 @@ package models
 
 type ProductBranch struct {
 	ID         uint `gorm:"primaryKey;autoIncrement" json:"id"`
+	MerchantID *uint `gorm:"index" json:"merchant_id,omitempty"`
 	BranchID   uint `gorm:"uniqueIndex:idx_product_branch;not null" json:"branch_id"`
 	ProductID  uint `gorm:"uniqueIndex:idx_product_branch;not null" json:"product_id"`
 	Price      int  `gorm:"type:integer;not null" json:"price"`

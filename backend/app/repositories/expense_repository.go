@@ -9,7 +9,7 @@ import (
 )
 
 type ExpenseRepository interface {
-	GetFiltered(ctx context.Context, query *models.ExpenseQuery) ([]models.Expense, int64, error)
+	GetFiltered(ctx context.Context, query *models.ExpenseQuery, merchantID *uint) ([]models.Expense, int64, error)
 	GetByID(ctx context.Context, id uint) (*models.Expense, error)
 	Create(ctx context.Context, e *models.Expense) (*models.Expense, error)
 	Update(ctx context.Context, e *models.Expense) error
@@ -24,7 +24,7 @@ func NewExpenseRepository(db *gorm.DB) ExpenseRepository {
 	return &expenseRepository{db: db}
 }
 
-func (r *expenseRepository) GetFiltered(ctx context.Context, query *models.ExpenseQuery) ([]models.Expense, int64, error) {
+func (r *expenseRepository) GetFiltered(ctx context.Context, query *models.ExpenseQuery, merchantID *uint) ([]models.Expense, int64, error) {
 	var list []models.Expense
 	var total int64
 
@@ -48,6 +48,10 @@ func (r *expenseRepository) GetFiltered(ctx context.Context, query *models.Expen
 
 	if query.BranchID != nil {
 		db = db.Where("branch_id = ?", *query.BranchID)
+	}
+
+	if merchantID != nil {
+		db = db.Where("merchant_id = ?", *merchantID)
 	}
 
 	if err := db.Count(&total).Error; err != nil {

@@ -30,6 +30,7 @@ func (h *ExpenseHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	} else if user := middleware.GetUser(r); user != nil && user.BranchID != nil {
 		branchID = user.BranchID
 	}
+	merchantID := getMerchantID(r)
 	query := &models.ExpenseQuery{
 		DateFrom:  q.Get("date_from"),
 		DateTo:    q.Get("date_to"),
@@ -41,7 +42,7 @@ func (h *ExpenseHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		SortOrder: q.Get("sort_order"),
 		BranchID:  branchID,
 	}
-	result, err := h.svc.GetFiltered(r.Context(), query)
+	result, err := h.svc.GetFiltered(r.Context(), query, merchantID)
 	if err != nil {
 		models.WriteError(w, err)
 		return
@@ -67,8 +68,22 @@ func (h *ExpenseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format tidak valid", 400))
 		return
 	}
-	if user := middleware.GetUser(r); user != nil && user.BranchID != nil {
-		req.BranchID = user.BranchID
+	if req.BranchID == nil {
+		if bid := r.URL.Query().Get("branch_id"); bid != "" {
+			if id, err := strconv.ParseUint(bid, 10, 32); err == nil {
+				uid := uint(id); req.BranchID = &uid
+			}
+		}
+	}
+	if req.BranchID == nil {
+		if user := middleware.GetUser(r); user != nil && user.BranchID != nil {
+			req.BranchID = user.BranchID
+		}
+	}
+	if req.MerchantID == nil {
+		if user := middleware.GetUser(r); user != nil {
+			req.MerchantID = user.MerchantID
+		}
 	}
 	e, err := h.svc.Create(r.Context(), &req)
 	if err != nil {

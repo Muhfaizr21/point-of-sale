@@ -41,6 +41,16 @@ func (h *AnalyticsHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) 
 		query.BranchID = user.BranchID
 	}
 
+	// Parse merchant_id
+	if mid := r.URL.Query().Get("merchant_id"); mid != "" {
+		if id, err := strconv.ParseUint(mid, 10, 32); err == nil {
+			uid := uint(id)
+			query.MerchantID = &uid
+		}
+	} else if user := middleware.GetUser(r); user != nil && user.MerchantID != nil {
+		query.MerchantID = user.MerchantID
+	}
+
 	result, err := h.service.GetAnalytics(r.Context(), query)
 	if err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInternalError, "Failed to fetch analytics", 500))

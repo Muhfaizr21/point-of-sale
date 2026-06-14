@@ -78,7 +78,7 @@ export function ExpensePage({ onToggleSidebar, activeBranch = null }) {
     try {
       const payload = { date: form.date, description: form.description.trim(), amount: parseInt(form.amount), category: form.category, notes: form.notes.trim() }
       if (editing) await apiClient.put(`/api/expenses/${editing.id}`, payload)
-      else await apiClient.post('/api/expenses', payload)
+      else await apiClient.post(`/api/expenses${activeBranch ? `?branch_id=${activeBranch}` : ''}`, payload)
       setIsModalOpen(false)
       fetchExpenses(pagination.page)
     } catch (err) { setFormError(err.message) }

@@ -19,6 +19,7 @@ func NewProductHandler(service services.ProductService) *ProductHandler {
 }
 
 func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	merchantID := getMerchantID(r)
 	bidStr := r.URL.Query().Get("branch_id")
 	if bidStr != "" {
 		branchID, err := strconv.Atoi(bidStr)
@@ -26,7 +27,7 @@ func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 			models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "branch_id tidak valid", 400))
 			return
 		}
-		products, err := h.service.GetAllByBranch(r.Context(), uint(branchID))
+		products, err := h.service.GetAllByBranch(r.Context(), uint(branchID), merchantID)
 		if err != nil {
 			models.WriteError(w, err)
 			return
@@ -47,7 +48,7 @@ func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	category := strings.TrimSpace(r.URL.Query().Get("category"))
 
 	if page > 0 && limit > 0 {
-		products, total, err := h.service.GetAllProductsPaginated(r.Context(), page, limit, search, category, branchID)
+		products, total, err := h.service.GetAllProductsPaginated(r.Context(), page, limit, search, category, branchID, merchantID)
 		if err != nil {
 			models.WriteError(w, err)
 			return
@@ -69,7 +70,17 @@ func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	products, err := h.service.GetAllProducts(r.Context())
+	if branchID != nil {
+		products, err := h.service.GetAllByBranch(r.Context(), *branchID, merchantID)
+		if err != nil {
+			models.WriteError(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(products)
+		return
+	}
+	products, err := h.service.GetAllProducts(r.Context(), merchantID)
 	if err != nil {
 		models.WriteError(w, err)
 		return
@@ -106,8 +117,20 @@ func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.BranchID == nil {
+		if bid := r.URL.Query().Get("branch_id"); bid != "" {
+			if id, err := strconv.ParseUint(bid, 10, 32); err == nil {
+				uid := uint(id); req.BranchID = &uid
+			}
+		}
+	}
+	if req.BranchID == nil {
 		if user := middleware.GetUser(r); user != nil {
 			req.BranchID = user.BranchID
+		}
+	}
+	if req.MerchantID == nil {
+		if user := middleware.GetUser(r); user != nil {
+			req.MerchantID = user.MerchantID
 		}
 	}
 
@@ -127,6 +150,16 @@ func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "ID produk tidak valid", 400))
+		return
+	}
+
+	existing, err := h.service.GetProductByID(r.Context(), uint(id))
+	if err != nil {
+		models.WriteError(w, err)
+		return
+	}
+	if user := middleware.GetUser(r); user != nil && user.BranchID != nil && existing.BranchID != nil && *existing.BranchID != *user.BranchID {
+		models.WriteError(w, models.NewAPIError(models.ErrForbidden, "Data ini bukan milik cabang Anda", 403))
 		return
 	}
 
@@ -152,6 +185,16 @@ func (h *ProductHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "ID produk tidak valid", 400))
+		return
+	}
+
+	existing, err := h.service.GetProductByID(r.Context(), uint(id))
+	if err != nil {
+		models.WriteError(w, err)
+		return
+	}
+	if user := middleware.GetUser(r); user != nil && user.BranchID != nil && existing.BranchID != nil && *existing.BranchID != *user.BranchID {
+		models.WriteError(w, models.NewAPIError(models.ErrForbidden, "Data ini bukan milik cabang Anda", 403))
 		return
 	}
 

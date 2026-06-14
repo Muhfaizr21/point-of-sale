@@ -48,13 +48,18 @@ export function SettingsPage({ onToggleSidebar, onSettingsChange }) {
   const [midtransEnv, setMidtransEnv] = useState('sandbox')
 
   const [notification, setNotification] = useState(null)
+  const [subscription, setSubscription] = useState(null)
+
+  useEffect(() => {
+    apiClient.get('/api/subscriptions/my').then(d => setSubscription(d)).catch(() => {})
+  }, [])
 
   const showNotif = useCallback((type, message, sub) => {
     setNotification({ type, message, sub })
     setTimeout(() => setNotification(null), 3000)
   }, [])
 
-  // Load
+  // Load from localStorage + backend integrations
   useEffect(() => {
     const g = (key, fallback) => { const v = localStorage.getItem(key); return v !== null ? v : fallback }
     const j = (key, fallback) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback } catch { return fallback } }
@@ -75,12 +80,34 @@ export function SettingsPage({ onToggleSidebar, onSettingsChange }) {
     setServiceChargeRate(tax.service_charge_rate ?? 5)
     setRounding(tax.rounding ?? true)
 
-    const integ = j('integrationSettings', {})
-    setMidtransEnabled(integ.midtrans?.enabled ?? false)
-    setMidtransClientKey(integ.midtrans?.client_key ?? '')
-    setMidtransServerKey(integ.midtrans?.server_key ?? '')
-    setMidtransMerchantId(integ.midtrans?.merchant_id ?? '')
-    setMidtransEnv(integ.midtrans?.environment ?? 'sandbox')
+    // Load integration configs from backend (superadmin-set)
+    apiClient.get('/api/integrations/my').then(data => {
+      if (!data || data.length === 0) {
+        // Fallback to localStorage for backward compat
+        const integ = j('integrationSettings', {})
+        setMidtransEnabled(integ.midtrans?.enabled ?? false)
+        setMidtransClientKey(integ.midtrans?.client_key ?? '')
+        setMidtransServerKey(integ.midtrans?.server_key ?? '')
+        setMidtransMerchantId(integ.midtrans?.merchant_id ?? '')
+        setMidtransEnv(integ.midtrans?.environment ?? 'sandbox')
+        return
+      }
+      const mt = data.find(i => i.app === 'midtrans')
+      if (mt) {
+        setMidtransEnabled(mt.enabled ?? false)
+        setMidtransClientKey(mt.config?.client_key ?? '')
+        setMidtransServerKey(mt.config?.server_key ?? '')
+        setMidtransMerchantId(mt.config?.merchant_id ?? '')
+        setMidtransEnv(mt.config?.environment ?? 'sandbox')
+      }
+    }).catch(() => {
+      const integ = j('integrationSettings', {})
+      setMidtransEnabled(integ.midtrans?.enabled ?? false)
+      setMidtransClientKey(integ.midtrans?.client_key ?? '')
+      setMidtransServerKey(integ.midtrans?.server_key ?? '')
+      setMidtransMerchantId(integ.midtrans?.merchant_id ?? '')
+      setMidtransEnv(integ.midtrans?.environment ?? 'sandbox')
+    })
   }, [])
 
   const handleSave = () => {
@@ -95,22 +122,25 @@ export function SettingsPage({ onToggleSidebar, onSettingsChange }) {
       service_charge_enabled: serviceChargeEnabled, service_charge_rate: serviceChargeRate,
       rounding,
     }))
-    // Only store public keys in localStorage
+    // Save to backend integration API (synced with superadmin panel)
+    const config = {
+      client_key: midtransClientKey,
+      server_key: midtransServerKey,
+      merchant_id: midtransMerchantId,
+      environment: midtransEnv,
+    }
+    apiClient.put('/api/integrations/my/midtrans', {
+      enabled: midtransEnabled,
+      config,
+    }).catch((err) => showNotif('error', 'Gagal menyimpan integrasi Midtrans', err.message))
+    // Keep localStorage for offline fallback
     localStorage.setItem('integrationSettings', JSON.stringify({
       midtrans: {
         enabled: midtransEnabled, client_key: midtransClientKey,
-        merchant_id: midtransMerchantId,
-        environment: midtransEnv,
+        merchant_id: midtransMerchantId, environment: midtransEnv,
+        server_key: midtransServerKey,
       },
     }))
-    // Store sensitive keys (server_key) on backend only
-    apiClient.post('/api/settings/midtrans', {
-      server_key: midtransServerKey,
-      client_key: midtransClientKey,
-      merchant_id: midtransMerchantId,
-      environment: midtransEnv,
-      enabled: midtransEnabled,
-    }).catch((err) => showNotif('error', 'Gagal menyimpan konfigurasi Midtrans', err.message))
 
     if (onSettingsChange) onSettingsChange()
     showNotif('success', 'Pengaturan berhasil disimpan!', 'Semua perubahan telah diterapkan.')
@@ -221,6 +251,41 @@ export function SettingsPage({ onToggleSidebar, onSettingsChange }) {
                   <textarea value={storeAddress} onChange={e => setStoreAddress(e.target.value)}
                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary text-gray-900 transition-all shadow-sm resize-none h-24 font-medium"
                     placeholder="Alamat operasional toko" />
+                </div>
+              </div>
+            </div>
+
+            {/* Subscription Info */}
+            <div className="px-8 pb-6">
+              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl border border-purple-200/60 p-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-md shrink-0">
+                    <span className="material-symbols-outlined text-[24px] text-white">workspace_premium</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3">
+                      <h4 className="text-base font-bold text-gray-900">Langganan</h4>
+                      {subscription ? (
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          subscription.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
+                          subscription.status === 'trial' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                        }`}>{subscription.status}</span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100 text-gray-500">-</span>
+                      )}
+                    </div>
+                    {subscription ? (
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-sm">
+                        <span className="font-semibold text-purple-700">{subscription.plan?.name || 'Basic'}</span>
+                        <span className="text-gray-500">{subscription.billing_period === 'monthly' ? 'Bulanan' : 'Tahunan'}</span>
+                        <span className="text-gray-400">
+                          Berakhir: {new Date(subscription.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400 mt-1">Belum ada paket — hubungi administrator</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -424,6 +489,8 @@ export function SettingsPage({ onToggleSidebar, onSettingsChange }) {
               </div>
             </div>
           </section>
+
+
 
           {/* ===== STRUK ===== */}
           <section className="bg-white rounded-3xl border border-gray-200/60 shadow-sm overflow-hidden">

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import logoSentrakas from '../../assets/Sentrakas.png';
+import dashboardMockup from '../../assets/dashboard_mockup.png';
 import { PublicFooter } from './PublicFooter';
 
 const milestones = [
@@ -36,7 +37,7 @@ export const AboutPage = () => {
       <nav className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[1100px] bg-zinc-900/90 backdrop-blur-xl border border-zinc-800 shadow-lg rounded-full z-50 hidden md:flex items-center justify-between px-8 py-3">
         <div className="flex items-center gap-4"><Link to="/"><img alt="SentraKas Logo" className="h-12 object-contain brightness-0 invert" src={logoSentrakas} /></Link></div>
         <div className="flex items-center gap-8">
-          <Link className="text-zinc-400 hover:text-white transition-colors text-xs tracking-widest font-semibold" to="/">HOME</Link>
+          <Link className="text-zinc-400 hover:text-white transition-colors text-xs tracking-widest font-semibold" to="/">BERANDA</Link>
           <Link className="text-white font-bold text-xs tracking-widest" to="/tentang">TENTANG</Link>
           <Link className="text-zinc-400 hover:text-white transition-colors text-xs tracking-widest font-semibold" to="/harga">HARGA</Link>
           <Link className="text-zinc-400 hover:text-white transition-colors text-xs tracking-widest font-semibold" to="/kontak">KONTAK</Link>
@@ -53,7 +54,7 @@ export const AboutPage = () => {
       <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-[480px] bg-zinc-900/95 backdrop-blur-xl border border-zinc-800 shadow-2xl rounded-2xl z-50 flex md:hidden items-center justify-around py-2.5 px-3">
         <Link to="/" className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition-colors py-1 px-2">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
-          <span className="text-[9px] font-bold tracking-wide">Home</span>
+          <span className="text-[9px] font-bold tracking-wide">Beranda</span>
         </Link>
         <Link to="/tentang" className="flex flex-col items-center gap-1 text-white transition-colors py-1 px-2">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.083.985l-.04.02a.75.75 0 01-1.083-.985zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -77,10 +78,7 @@ export const AboutPage = () => {
         {/* ===== HERO ===== */}
         <section className="flex flex-col lg:flex-row items-center gap-12 md:gap-16">
           <div className="flex-1 flex flex-col gap-6">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-indigo-300 text-sm font-bold w-fit">
-              <span className="material-symbols-outlined text-[16px]">business</span>
-              Perusahaan Teknologi Ritel Indonesia
-            </span>
+
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white leading-[1.08]">
               Membangun Infrastruktur Digital untuk 2.000+ Gerai Ritel & F&amp;B
             </h1>
@@ -117,7 +115,7 @@ export const AboutPage = () => {
                 <div className="mx-auto bg-zinc-800 rounded-lg px-6 py-1 text-xs text-zinc-400">sentrakas.id/dashboard</div>
               </div>
               <div className="relative w-full overflow-hidden" style={{ backgroundColor: '#050505' }}>
-                <img alt="SentraKas Dashboard" className="w-full h-auto object-cover opacity-90 group-hover:scale-[1.02] transition-transform duration-500" src="https://lh3.googleusercontent.com/aida/AP1WRLtN0YKD_isqAnYzgPMYzvnIIHiK7AmEc6khN8eSndTyvy56-Pf46LcPpfJdc7766bachyHuJlTzjZLo--ljyI8DT8D11_palduRUhwxcBSJJw45OOTqouKOXrtdYbkwED_a-QHUgfQSffbuOcvZl-1bimwdc28OtDQ2akdSUjsl2BQ6hh-lk4kosSzE1_XLKZI3rq2O5HrawnEo15guekQzV5vMeJu6pbgbiHaiMFfA3YuDPw93_tGz" />
+                <img alt="SentraKas Dashboard" className="w-full h-auto object-cover opacity-90 group-hover:scale-[1.02] transition-transform duration-500" src={dashboardMockup} />
               </div>
             </div>
           </div>
@@ -126,10 +124,7 @@ export const AboutPage = () => {
         {/* ===== VALUES ===== */}
         <section>
           <div className="text-center mb-12">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-indigo-300 text-sm font-bold mb-4">
-              <span className="material-symbols-outlined text-[16px]">verified</span>
-              Standar Operasional
-            </span>
+
             <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">Empat Pilar yang Menjadi Fondasi Kami</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -148,10 +143,7 @@ export const AboutPage = () => {
         {/* ===== MILESTONE ===== */}
         <section>
           <div className="text-center mb-12">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-indigo-300 text-sm font-bold mb-4">
-              <span className="material-symbols-outlined text-[16px]">timeline</span>
-              Perjalanan Kami
-            </span>
+
             <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">Dari Startup Menjadi Platform Ritel Nasional</h2>
           </div>
           <div className="relative">
@@ -179,10 +171,7 @@ export const AboutPage = () => {
         {/* ===== TEAM ===== */}
         <section>
           <div className="text-center mb-12">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-indigo-300 text-sm font-bold mb-4">
-              <span className="material-symbols-outlined text-[16px]">groups</span>
-              Tim Inti
-            </span>
+
             <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">Orang di Balik SentraKas</h2>
             <p className="text-lg text-zinc-400 mt-3 max-w-xl mx-auto">Tim kecil dengan pengalaman puluhan tahun di teknologi ritel, fintech, dan produk digital.</p>
           </div>

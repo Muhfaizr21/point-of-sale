@@ -14,13 +14,14 @@ type ProductVariation struct {
 
 type Product struct {
 	ID         uint           `gorm:"primaryKey;autoIncrement" json:"id"`
-	BranchID   *uint          `gorm:"index" json:"branch_id,omitempty"`
+	MerchantID *uint          `gorm:"index" json:"merchant_id,omitempty"`
+	BranchID   *uint          `gorm:"uniqueIndex:idx_sku_branch" json:"branch_id,omitempty"`
 	Name       string         `gorm:"type:varchar(255);not null" json:"name"`
 	Category   string         `gorm:"type:varchar(100);not null" json:"category"`
 	Price      int            `gorm:"type:integer;not null" json:"price"`
 	CostPrice  int            `gorm:"type:integer;default:0" json:"cost_price"`
 	Icon       string         `gorm:"type:varchar(100);not null" json:"icon"`
-	SKU        string         `gorm:"type:varchar(100);uniqueIndex" json:"sku"`
+	SKU        string         `gorm:"type:varchar(100);uniqueIndex:idx_sku_branch;not null" json:"sku"`
 	Stock      int            `gorm:"type:integer;default:0" json:"stock"`
 	TrackStock bool           `gorm:"default:true" json:"track_stock"`
 	Variations []ProductVariation `gorm:"serializer:json;type:jsonb;default:'[]'" json:"variations"`
@@ -30,6 +31,7 @@ type Product struct {
 }
 
 type CreateProductRequest struct {
+	MerchantID *uint              `json:"merchant_id,omitempty"`
 	BranchID   *uint              `json:"branch_id,omitempty"`
 	Name       string             `json:"name"`
 	SKU        string             `json:"sku"`

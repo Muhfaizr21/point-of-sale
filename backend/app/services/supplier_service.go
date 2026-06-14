@@ -8,8 +8,8 @@ import (
 )
 
 type SupplierService interface {
-	GetAll(ctx context.Context, branchID *uint) ([]models.Supplier, error)
-	GetAllPaginated(ctx context.Context, page, limit int, search string, branchID *uint) ([]models.Supplier, int64, error)
+	GetAll(ctx context.Context, branchID *uint, merchantID *uint) ([]models.Supplier, error)
+	GetAllPaginated(ctx context.Context, page, limit int, search string, branchID *uint, merchantID *uint) ([]models.Supplier, int64, error)
 	GetByID(ctx context.Context, id uint) (*models.Supplier, error)
 	Create(ctx context.Context, req *models.CreateSupplierRequest) (*models.Supplier, error)
 	Update(ctx context.Context, id uint, req *models.UpdateSupplierRequest) (*models.Supplier, error)
@@ -24,12 +24,12 @@ func NewSupplierService(repo repositories.SupplierRepository) SupplierService {
 	return &supplierService{repo: repo}
 }
 
-func (s *supplierService) GetAll(ctx context.Context, branchID *uint) ([]models.Supplier, error) {
-	return s.repo.GetAll(ctx, branchID)
+func (s *supplierService) GetAll(ctx context.Context, branchID *uint, merchantID *uint) ([]models.Supplier, error) {
+	return s.repo.GetAll(ctx, branchID, merchantID)
 }
 
-func (s *supplierService) GetAllPaginated(ctx context.Context, page, limit int, search string, branchID *uint) ([]models.Supplier, int64, error) {
-	return s.repo.GetAllPaginated(ctx, page, limit, search, branchID)
+func (s *supplierService) GetAllPaginated(ctx context.Context, page, limit int, search string, branchID *uint, merchantID *uint) ([]models.Supplier, int64, error) {
+	return s.repo.GetAllPaginated(ctx, page, limit, search, branchID, merchantID)
 }
 
 func (s *supplierService) GetByID(ctx context.Context, id uint) (*models.Supplier, error) {

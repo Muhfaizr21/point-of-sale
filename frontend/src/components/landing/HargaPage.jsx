@@ -97,7 +97,7 @@ export const HargaPage = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  const formatPrice = (v) => v ? `Rp ${(v / 1000).toFixed(0)}`.replace('.', ',') : null
+  const formatPrice = (v) => v ? `Rp ${v.toLocaleString('id-ID')}` : null
 
   return (
     <div className="antialiased min-h-screen overflow-x-hidden w-full h-screen overflow-y-auto relative" style={{ backgroundColor: '#000000', color: '#fafafa' }}>
@@ -105,7 +105,7 @@ export const HargaPage = () => {
       <nav className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[1100px] bg-zinc-900/90 backdrop-blur-xl border border-zinc-800 shadow-lg rounded-full z-50 hidden md:flex items-center justify-between px-8 py-3">
         <div className="flex items-center gap-4"><Link to="/"><img alt="SentraKas Logo" className="h-12 object-contain brightness-0 invert" src={logoSentrakas} /></Link></div>
         <div className="flex items-center gap-8">
-          <Link className="text-zinc-400 hover:text-white transition-colors text-xs tracking-widest font-semibold" to="/">HOME</Link>
+          <Link className="text-zinc-400 hover:text-white transition-colors text-xs tracking-widest font-semibold" to="/">BERANDA</Link>
           <Link className="text-zinc-400 hover:text-white transition-colors text-xs tracking-widest font-semibold" to="/tentang">TENTANG</Link>
           <Link className="text-white font-bold text-xs tracking-widest" to="/harga">HARGA</Link>
           <Link className="text-zinc-400 hover:text-white transition-colors text-xs tracking-widest font-semibold" to="/kontak">KONTAK</Link>
@@ -121,7 +121,7 @@ export const HargaPage = () => {
       {/* Mobile nav */}
       <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-[480px] bg-zinc-900/95 backdrop-blur-xl border border-zinc-800 shadow-2xl rounded-2xl z-50 flex md:hidden items-center justify-around py-2.5 px-3">
         {[
-          { to: '/', label: 'Home', icon: 'M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25' },
+          { to: '/', label: 'Beranda', icon: 'M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25' },
           { to: '/tentang', label: 'Tentang', icon: 'M11.25 11.25l.041-.02a.75.75 0 111.083.985l-.04.02a.75.75 0 01-1.083-.985zM21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
           { to: '/harga', label: 'Harga', icon: 'M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a1.44 1.44 0 002.037 0l4.723-4.723a1.44 1.44 0 000-2.037l-9.58-9.58A2.25 2.25 0 009.568 3z' },
           { to: '/kontak', label: 'Kontak', icon: 'M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75' },

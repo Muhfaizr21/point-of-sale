@@ -8,7 +8,7 @@ import (
 )
 
 type ExpenseService interface {
-	GetFiltered(ctx context.Context, query *models.ExpenseQuery) (*models.ExpenseListResponse, error)
+	GetFiltered(ctx context.Context, query *models.ExpenseQuery, merchantID *uint) (*models.ExpenseListResponse, error)
 	GetByID(ctx context.Context, id uint) (*models.Expense, error)
 	Create(ctx context.Context, req *models.CreateExpenseRequest) (*models.Expense, error)
 	Update(ctx context.Context, id uint, req *models.UpdateExpenseRequest) (*models.Expense, error)
@@ -23,7 +23,7 @@ func NewExpenseService(repo repositories.ExpenseRepository) ExpenseService {
 	return &expenseService{repo: repo}
 }
 
-func (s *expenseService) GetFiltered(ctx context.Context, query *models.ExpenseQuery) (*models.ExpenseListResponse, error) {
+func (s *expenseService) GetFiltered(ctx context.Context, query *models.ExpenseQuery, merchantID *uint) (*models.ExpenseListResponse, error) {
 	if query.Page < 1 {
 		query.Page = 1
 	}
@@ -37,7 +37,7 @@ func (s *expenseService) GetFiltered(ctx context.Context, query *models.ExpenseQ
 		query.SortOrder = "desc"
 	}
 
-	list, total, err := s.repo.GetFiltered(ctx, query)
+	list, total, err := s.repo.GetFiltered(ctx, query, merchantID)
 	if err != nil {
 		return nil, err
 	}

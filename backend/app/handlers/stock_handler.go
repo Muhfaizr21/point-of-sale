@@ -35,6 +35,7 @@ func (h *StockHandler) Adjust(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := middleware.GetUser(r)
+	merchantID := getMerchantID(r)
 	if user != nil && user.BranchID != nil {
 		// Per-branch stock adjustment
 		pb, err := h.pbRepo.GetByBranchProduct(r.Context(), *user.BranchID, req.ProductID)
@@ -58,6 +59,7 @@ func (h *StockHandler) Adjust(w http.ResponseWriter, r *http.Request) {
 				ProductID:  req.ProductID,
 				Stock:      product.Stock,
 				TrackStock: product.TrackStock,
+				MerchantID: user.MerchantID,
 			}
 		}
 		if !pb.TrackStock {
@@ -93,6 +95,10 @@ func (h *StockHandler) Adjust(w http.ResponseWriter, r *http.Request) {
 	product, err := h.prodRepo.GetByID(r.Context(), req.ProductID)
 	if err != nil {
 		models.WriteError(w, err)
+		return
+	}
+	if merchantID != nil && (product.MerchantID == nil || *product.MerchantID != *merchantID) {
+		models.WriteError(w, models.NewAPIError(models.ErrForbidden, "Produk tidak ditemukan", 404))
 		return
 	}
 	if !product.TrackStock {
@@ -132,6 +138,14 @@ func (h *StockHandler) GetLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	productID, _ := strconv.ParseUint(productIDStr, 10, 32)
+	merchantID := getMerchantID(r)
+	if merchantID != nil {
+		product, err := h.prodRepo.GetByID(r.Context(), uint(productID))
+		if err != nil || product.MerchantID == nil || *product.MerchantID != *merchantID {
+			models.WriteError(w, models.NewAPIError(models.ErrForbidden, "Produk tidak ditemukan", 404))
+			return
+		}
+	}
 	logs, err := h.logRepo.GetByProductID(r.Context(), uint(productID))
 	if err != nil {
 		models.WriteError(w, err)
@@ -143,7 +157,13 @@ func (h *StockHandler) GetLogs(w http.ResponseWriter, r *http.Request) {
 
 func (h *StockHandler) GetAllLogs(w http.ResponseWriter, r *http.Request) {
 	var logs []models.StockLog
-	err := h.db.WithContext(r.Context()).Preload("Product").Order("created_at desc").Limit(100).Find(&logs).Error
+	query := h.db.WithContext(r.Context()).Preload("Product").Order("created_at desc").Limit(100)
+	if mid := getMerchantID(r); mid != nil {
+		query = query.Where("product_id IN (?)",
+			h.db.Model(&models.Product{}).Select("id").Where("merchant_id = ?", *mid),
+		)
+	}
+	err := query.Find(&logs).Error
 	if err != nil {
 		models.WriteError(w, err)
 		return

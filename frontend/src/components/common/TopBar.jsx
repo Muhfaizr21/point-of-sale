@@ -1,6 +1,7 @@
 import React from 'react'
+import { NotificationBell } from './NotificationBell'
 
-export function TopBar({ title, subtitle, onToggleSidebar, rightContent }) {
+export function TopBar({ title, subtitle, onToggleSidebar, rightContent, showNotification = true }) {
   return (
     <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-md px-lg py-md h-auto min-h-[72px] w-full border-b border-outline-variant bg-surface z-20 shrink-0 shadow-sm sticky top-0">
       <div className="flex items-center gap-md w-full sm:w-auto">
@@ -20,8 +21,9 @@ export function TopBar({ title, subtitle, onToggleSidebar, rightContent }) {
           )}
         </div>
       </div>
-      {rightContent && (
-        <div className="flex items-center gap-3 w-full sm:w-auto mt-3 sm:mt-0">
+      {(rightContent || showNotification) && (
+        <div className="flex items-center gap-3 w-full sm:w-auto mt-3 sm:mt-0 ml-auto justify-end">
+          {showNotification && <NotificationBell />}
           {rightContent}
         </div>
       )}

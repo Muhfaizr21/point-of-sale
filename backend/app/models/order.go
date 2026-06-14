@@ -24,7 +24,8 @@ var ValidStatusTransitions = map[string][]string{
 
 type Order struct {
 	ID             uint            `gorm:"primaryKey;autoIncrement" json:"id"`
-	InvoiceNumber  string          `gorm:"type:varchar(100);uniqueIndex;not null" json:"invoice_number"`
+	MerchantID     *uint           `gorm:"uniqueIndex:idx_order_invoice_merchant" json:"merchant_id,omitempty"`
+	InvoiceNumber  string          `gorm:"type:varchar(100);uniqueIndex:idx_order_invoice_merchant;not null" json:"invoice_number"`
 	BranchID       *uint           `gorm:"index" json:"branch_id,omitempty"`
 	Branch         *Branch         `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
 	CustomerID     *uint           `json:"customer_id,omitempty"`
@@ -75,6 +76,7 @@ type SplitPaymentRequest struct {
 }
 
 type CreateOrderRequest struct {
+	MerchantID        *uint                 `json:"merchant_id,omitempty"`
 	BranchID          *uint                 `json:"branch_id,omitempty"`
 	PaymentMethod     string                `json:"payment_method"`
 	SplitPayments     []SplitPaymentRequest `json:"split_payments,omitempty"`
@@ -127,9 +129,10 @@ type Pagination struct {
 
 // Analytics models
 type AnalyticsQuery struct {
-	DateFrom string `json:"date_from"`
-	DateTo   string `json:"date_to"`
-	BranchID *uint  `json:"branch_id,omitempty"`
+	DateFrom   string `json:"date_from"`
+	DateTo     string `json:"date_to"`
+	BranchID   *uint  `json:"branch_id,omitempty"`
+	MerchantID *uint  `json:"merchant_id,omitempty"`
 }
 
 type DailySales struct {
@@ -183,6 +186,13 @@ type CashierSales struct {
 	Percent      float64 `json:"percent"`
 }
 
+type BranchSales struct {
+	BranchName   string  `json:"branch_name"`
+	Transactions int     `json:"transactions"`
+	Revenue      int     `json:"revenue"`
+	Percent      float64 `json:"percent"`
+}
+
 type AnalyticsResponse struct {
 	Summary      SummaryStats       `json:"summary"`
 	DailySales   []DailySales       `json:"daily_sales"`
@@ -191,6 +201,7 @@ type AnalyticsResponse struct {
 	TopProducts  []TopProduct       `json:"top_products"`
 	WeeklySales  []WeeklySales      `json:"weekly_sales"`
 	CashierSales []CashierSales     `json:"cashier_sales"`
+	BranchSales  []BranchSales      `json:"branch_sales"`
 }
 
 type SummaryStats struct {

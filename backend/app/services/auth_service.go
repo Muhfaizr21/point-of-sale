@@ -18,7 +18,7 @@ type AuthService interface {
 	Me(ctx context.Context, token string) (*models.User, error)
 	Logout(ctx context.Context, token string) error
 	GetAllUsers(ctx context.Context) ([]models.User, error)
-	CreateUser(ctx context.Context, username, password, name, role string, branchID *uint) (*models.User, error)
+	CreateUser(ctx context.Context, username, password, name, role string, branchID *uint, merchantID *uint) (*models.User, error)
 	UpdateUser(ctx context.Context, id uint, username, password, name, role string, branchID *uint) (*models.User, error)
 	DeleteUser(ctx context.Context, id uint) error
 }
@@ -42,6 +42,11 @@ func (s *authService) Login(ctx context.Context, username, password string) (*mo
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return nil, models.NewAPIError(models.ErrUnauthorized, "Username atau password salah", 401)
+	}
+
+	// Merchant active check (skip for superadmin)
+	if user.MerchantID != nil && user.Merchant != nil && !user.Merchant.Active {
+		return nil, models.NewAPIError(models.ErrForbidden, "Akun Anda telah dinonaktifkan. Hubungi administrator.", 403)
 	}
 
 	token := generateToken()
@@ -77,6 +82,14 @@ func (s *authService) Me(ctx context.Context, token string) (*models.User, error
 		return nil, models.NewAPIError(models.ErrUnauthorized, "Token sudah kadaluarsa", 401)
 	}
 
+	// Merchant active check (skip for superadmin)
+	if user.MerchantID != nil && user.Merchant != nil && !user.Merchant.Active {
+		user.Token = ""
+		user.TokenExpiresAt = nil
+		s.userRepo.Update(ctx, user)
+		return nil, models.NewAPIError(models.ErrForbidden, "Akun Anda telah dinonaktifkan", 403)
+	}
+
 	user.Password = ""
 	user.Token = ""
 	return user, nil
@@ -107,7 +120,7 @@ func (s *authService) GetAllUsers(ctx context.Context) ([]models.User, error) {
 	return users, nil
 }
 
-func (s *authService) CreateUser(ctx context.Context, username, password, name, role string, branchID *uint) (*models.User, error) {
+func (s *authService) CreateUser(ctx context.Context, username, password, name, role string, branchID *uint, merchantID *uint) (*models.User, error) {
 	if username == "" || password == "" || name == "" {
 		return nil, models.NewAPIError(models.ErrInvalidInput, "Username, password, dan nama wajib diisi", 400)
 	}
@@ -125,16 +138,17 @@ func (s *authService) CreateUser(ctx context.Context, username, password, name, 
 		return nil, models.NewAPIError(models.ErrInternalError, "Gagal mengenkripsi password", 500)
 	}
 
-	if role != "owner" && role != "cashier" {
+	if role != "superadmin" && role != "owner" && role != "cashier" {
 		role = "cashier"
 	}
 
 	user := &models.User{
-		Username: username,
-		Password: string(hashed),
-		Name:     name,
-		Role:     role,
-		BranchID: branchID,
+		Username:   username,
+		Password:   string(hashed),
+		Name:       name,
+		Role:       role,
+		BranchID:   branchID,
+		MerchantID: merchantID,
 	}
 	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, models.NewAPIError(models.ErrInternalError, "Gagal membuat user", 500)
@@ -175,7 +189,7 @@ func (s *authService) UpdateUser(ctx context.Context, id uint, username, passwor
 		}
 		user.Password = string(hashed)
 	}
-	if role == "owner" || role == "cashier" {
+	if role == "superadmin" || role == "owner" || role == "cashier" {
 		user.Role = role
 	}
 	if branchID != nil {

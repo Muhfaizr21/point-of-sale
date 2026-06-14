@@ -150,11 +150,11 @@ export function DashboardPage({ onToggleSidebar, activeBranch = null }) {
   const fetchTargets = useCallback(async () => {
     try {
       const todayStr = getLocalDateString()
-      const current = await targetService.getByDate(todayStr)
+      const current = await targetService.getByDate(todayStr, activeBranch)
       if (current) {
         setCurrentTarget(current)
       }
-      const all = await targetService.getAll()
+      const all = await targetService.getAll(activeBranch)
       if (all) {
         setAllTargets(all)
       }
@@ -1008,7 +1008,7 @@ export function DashboardPage({ onToggleSidebar, activeBranch = null }) {
                       date: targetForm.date,
                       revenue_target: Number(targetForm.revenue_target),
                       transaction_target: Number(targetForm.transaction_target),
-                    })
+                    }, activeBranch)
                     // Refetch targets
                     await fetchTargets()
                     // Update today's target if needed
@@ -1110,7 +1110,7 @@ export function DashboardPage({ onToggleSidebar, activeBranch = null }) {
                             onClick={async () => {
                               if (confirm(`Apakah Anda yakin ingin menghapus target untuk tanggal ${formatDate(target.date)}?`)) {
                                 try {
-                                  await targetService.delete(target.date)
+                                  await targetService.delete(target.date, activeBranch)
                                   await fetchTargets()
                                   // Reset current target if it was deleted
                                   const todayStr = getLocalDateString()

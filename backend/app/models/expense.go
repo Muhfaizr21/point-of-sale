@@ -4,6 +4,7 @@ import "time"
 
 type Expense struct {
 	ID          uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	MerchantID  *uint     `gorm:"index" json:"merchant_id,omitempty"`
 	Date        string    `gorm:"type:date;index;not null" json:"date"`
 	Description string    `gorm:"type:varchar(255);not null" json:"description"`
 	Amount      int       `gorm:"type:integer;not null" json:"amount"`
@@ -21,6 +22,7 @@ type CreateExpenseRequest struct {
 	Amount      int    `json:"amount"`
 	Category    string `json:"category"`
 	Notes       string `json:"notes"`
+	MerchantID  *uint  `json:"merchant_id,omitempty"`
 	BranchID    *uint  `json:"-"`
 }
 

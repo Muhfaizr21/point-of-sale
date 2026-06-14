@@ -30,12 +30,16 @@ export const apiClient = {
           window.dispatchEvent(new CustomEvent('auth-expired'));
         }
         let errorMessage = 'Request failed';
+        let errorCode = '';
         try {
           const errorResult = await response.json();
           errorMessage = errorResult.message || errorMessage;
+          errorCode = errorResult.code || '';
         } catch {
-          // If response body is not JSON or empty
           errorMessage = `HTTP error ${response.status}: ${response.statusText}`;
+        }
+        if (response.status === 503 || errorCode === 'MAINTENANCE_MODE') {
+          window.dispatchEvent(new CustomEvent('maintenance-mode', { detail: { message: errorMessage } }));
         }
         throw new Error(errorMessage);
       }

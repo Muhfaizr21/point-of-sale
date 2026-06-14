@@ -42,8 +42,8 @@ export function SupplierPage({ onToggleSidebar, activeBranch = null }) {
     if (!form.name) return
     setFormError(null); setIsSubmitting(true)
     try {
-      if (editing) await apiClient.put(`/api/suppliers/${editing.id}`, form)
-      else await apiClient.post('/api/suppliers', form)
+      if (editing) await apiClient.put(`/api/suppliers/${editing.id}${activeBranch ? `?branch_id=${activeBranch}` : ''}`, form)
+      else await apiClient.post(`/api/suppliers${activeBranch ? `?branch_id=${activeBranch}` : ''}`, form)
       await fetchData(); setIsModalOpen(false)
     } catch (err) { setFormError(err.message) }
     finally { setIsSubmitting(false) }

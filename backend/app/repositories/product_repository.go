@@ -8,8 +8,9 @@ import (
 )
 
 type ProductRepository interface {
-	GetAll(ctx context.Context) ([]models.Product, error)
-	GetAllPaginated(ctx context.Context, page, limit int, search, category string, branchID *uint) ([]models.Product, int64, error)
+	GetAll(ctx context.Context, merchantID *uint) ([]models.Product, error)
+	GetAllPaginated(ctx context.Context, page, limit int, search, category string, branchID *uint, merchantID *uint) ([]models.Product, int64, error)
+	GetAllByBranch(ctx context.Context, branchID uint, merchantID *uint) ([]models.Product, error)
 	GetByID(ctx context.Context, id uint) (*models.Product, error)
 	Create(ctx context.Context, product *models.Product) (*models.Product, error)
 	Update(ctx context.Context, product *models.Product) error
@@ -26,17 +27,34 @@ func NewProductRepository(db *gorm.DB) ProductRepository {
 	return &productRepository{db: db}
 }
 
-func (r *productRepository) GetAll(ctx context.Context) ([]models.Product, error) {
+func (r *productRepository) GetAll(ctx context.Context, merchantID *uint) ([]models.Product, error) {
 	var products []models.Product
-	err := r.db.WithContext(ctx).Order("id desc").Find(&products).Error
+	db := r.db.WithContext(ctx)
+	if merchantID != nil {
+		db = db.Where("merchant_id = ?", *merchantID)
+	}
+	err := db.Order("id desc").Find(&products).Error
 	return products, err
 }
 
-func (r *productRepository) GetAllPaginated(ctx context.Context, page, limit int, search, category string, branchID *uint) ([]models.Product, int64, error) {
+func (r *productRepository) GetAllByBranch(ctx context.Context, branchID uint, merchantID *uint) ([]models.Product, error) {
+	var products []models.Product
+	db := r.db.WithContext(ctx).Where("branch_id = ?", branchID)
+	if merchantID != nil {
+		db = db.Where("merchant_id = ?", *merchantID)
+	}
+	err := db.Order("id desc").Find(&products).Error
+	return products, err
+}
+
+func (r *productRepository) GetAllPaginated(ctx context.Context, page, limit int, search, category string, branchID *uint, merchantID *uint) ([]models.Product, int64, error) {
 	var total int64
 	db := r.db.WithContext(ctx).Model(&models.Product{})
 	if branchID != nil {
 		db = db.Where("branch_id = ?", *branchID)
+	}
+	if merchantID != nil {
+		db = db.Where("merchant_id = ?", *merchantID)
 	}
 	if search != "" {
 		db = db.Where("LOWER(name) LIKE ? OR LOWER(sku) LIKE ?", "%"+search+"%", "%"+search+"%")

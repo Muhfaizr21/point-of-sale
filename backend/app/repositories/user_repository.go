@@ -28,7 +28,7 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 
 func (r *userRepository) GetByUsername(ctx context.Context, username string) (*models.User, error) {
 	var user models.User
-	err := r.db.WithContext(ctx).Preload("Branch").Where("username = ?", username).First(&user).Error
+	err := r.db.WithContext(ctx).Preload("Branch").Preload("Merchant").Where("username = ?", username).First(&user).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
@@ -37,7 +37,7 @@ func (r *userRepository) GetByUsername(ctx context.Context, username string) (*m
 
 func (r *userRepository) GetByToken(ctx context.Context, token string) (*models.User, error) {
 	var user models.User
-	err := r.db.WithContext(ctx).Preload("Branch").Where("token = ?", token).First(&user).Error
+	err := r.db.WithContext(ctx).Preload("Branch").Preload("Merchant").Where("token = ?", token).First(&user).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}

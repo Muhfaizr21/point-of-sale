@@ -8,8 +8,8 @@ import (
 )
 
 type SupplierRepository interface {
-	GetAll(ctx context.Context, branchID *uint) ([]models.Supplier, error)
-	GetAllPaginated(ctx context.Context, page, limit int, search string, branchID *uint) ([]models.Supplier, int64, error)
+	GetAll(ctx context.Context, branchID *uint, merchantID *uint) ([]models.Supplier, error)
+	GetAllPaginated(ctx context.Context, page, limit int, search string, branchID *uint, merchantID *uint) ([]models.Supplier, int64, error)
 	GetByID(ctx context.Context, id uint) (*models.Supplier, error)
 	Create(ctx context.Context, s *models.Supplier) (*models.Supplier, error)
 	Update(ctx context.Context, s *models.Supplier) error
@@ -24,21 +24,27 @@ func NewSupplierRepository(db *gorm.DB) SupplierRepository {
 	return &supplierRepository{db: db}
 }
 
-func (r *supplierRepository) GetAll(ctx context.Context, branchID *uint) ([]models.Supplier, error) {
+func (r *supplierRepository) GetAll(ctx context.Context, branchID *uint, merchantID *uint) ([]models.Supplier, error) {
 	var list []models.Supplier
 	db := r.db.WithContext(ctx)
 	if branchID != nil {
 		db = db.Where("branch_id = ?", *branchID)
 	}
+	if merchantID != nil {
+		db = db.Where("merchant_id = ?", *merchantID)
+	}
 	err := db.Order("id desc").Find(&list).Error
 	return list, err
 }
 
-func (r *supplierRepository) GetAllPaginated(ctx context.Context, page, limit int, search string, branchID *uint) ([]models.Supplier, int64, error) {
+func (r *supplierRepository) GetAllPaginated(ctx context.Context, page, limit int, search string, branchID *uint, merchantID *uint) ([]models.Supplier, int64, error) {
 	var total int64
 	db := r.db.WithContext(ctx).Model(&models.Supplier{})
 	if branchID != nil {
 		db = db.Where("branch_id = ?", *branchID)
+	}
+	if merchantID != nil {
+		db = db.Where("merchant_id = ?", *merchantID)
 	}
 	if search != "" {
 		db = db.Where("LOWER(name) LIKE ? OR LOWER(contact_person) LIKE ?", "%"+search+"%", "%"+search+"%")

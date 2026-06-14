@@ -21,7 +21,8 @@ func NewBranchHandler(svc services.BranchService, pbr repositories.ProductBranch
 }
 
 func (h *BranchHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	list, err := h.svc.GetAll(r.Context())
+	merchantID := getMerchantID(r)
+	list, err := h.svc.GetAll(r.Context(), merchantID)
 	if err != nil {
 		models.WriteError(w, err)
 		return
@@ -52,7 +53,8 @@ func (h *BranchHandler) Create(w http.ResponseWriter, r *http.Request) {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format tidak valid", 400))
 		return
 	}
-	b, err := h.svc.Create(r.Context(), &req)
+	merchantID := getMerchantID(r)
+	b, err := h.svc.Create(r.Context(), &req, merchantID)
 	if err != nil {
 		models.WriteError(w, err)
 		return
@@ -181,7 +183,9 @@ func (h *BranchHandler) SetProductPrice(w http.ResponseWriter, r *http.Request) 
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "product_id diperlukan", 400))
 		return
 	}
+	merchantID := getMerchantID(r)
 	pb := &models.ProductBranch{
+		MerchantID: merchantID,
 		BranchID:   uint(branchID),
 		ProductID:  uint(productID),
 		Price:      req.Price,

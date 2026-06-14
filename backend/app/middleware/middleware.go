@@ -16,6 +16,7 @@ type contextKey string
 
 const UserContextKey contextKey = "user"
 const BranchContextKey contextKey = "branch_id"
+const MerchantContextKey contextKey = "merchant_id"
 
 var allowedOrigins = map[string]bool{
 	"http://localhost:5173": true,
@@ -84,6 +85,32 @@ func GetBranchID(r *http.Request) *uint {
 	return nil
 }
 
+func GetMerchantID(r *http.Request) *uint {
+	if merchantID, ok := r.Context().Value(MerchantContextKey).(uint); ok {
+		return &merchantID
+	}
+	return nil
+}
+
+func RequireMerchant(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := GetUser(r)
+		if user == nil {
+			models.WriteError(w, models.NewAPIError(models.ErrUnauthorized, "Silakan login", 401))
+			return
+		}
+		if user.Role == "superadmin" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if user.MerchantID == nil {
+			models.WriteError(w, models.NewAPIError(models.ErrForbidden, "Akun belum terdaftar sebagai merchant", 403))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func RequireRole(roles ...string) func(http.Handler) http.Handler {
 	allowed := make(map[string]bool)
 	for _, r := range roles {
@@ -106,7 +133,46 @@ func RequireRole(roles ...string) func(http.Handler) http.Handler {
 }
 
 func RequireOwner(next http.Handler) http.Handler {
-	return RequireRole("owner")(next)
+	return RequireRole("superadmin", "owner")(next)
+}
+
+func RequireSuperadmin(next http.Handler) http.Handler {
+	return RequireRole("superadmin")(next)
+}
+
+func MaintenanceMode(db *gorm.DB, skipPaths ...string) func(http.Handler) http.Handler {
+	skipMap := make(map[string]bool)
+	for _, p := range skipPaths { skipMap[p] = true }
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			for path := range skipMap {
+				if strings.HasPrefix(r.URL.Path, path) { next.ServeHTTP(w, r); return }
+			}
+			// Allow superadmin through
+			user := GetUser(r)
+			if user != nil && user.Role == "superadmin" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			var s models.StoreSetting
+			if err := db.Where("key = ?", "maintenance_mode").First(&s).Error; err == nil && s.Value == "true" {
+				var msg models.StoreSetting
+				msgStr := "Sistem sedang dalam perawatan. Silakan coba lagi nanti."
+				if err := db.Where("key = ?", "maintenance_message").First(&msg).Error; err == nil {
+					msgStr = msg.Value
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				json.NewEncoder(w).Encode(models.APIError{
+					Code:    "MAINTENANCE_MODE",
+					Message: msgStr,
+				})
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func Authenticate(db *gorm.DB, skipPaths ...string) func(http.Handler) http.Handler {
@@ -158,6 +224,9 @@ func Authenticate(db *gorm.DB, skipPaths ...string) func(http.Handler) http.Hand
 			user.Password = ""
 			user.Token = ""
 			ctx := context.WithValue(r.Context(), UserContextKey, &user)
+			if user.MerchantID != nil {
+				ctx = context.WithValue(ctx, MerchantContextKey, *user.MerchantID)
+			}
 			if user.BranchID != nil {
 				ctx = context.WithValue(ctx, BranchContextKey, *user.BranchID)
 			}

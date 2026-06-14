@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { apiClient } from '../services/apiClient'
 import { useAuth } from '../context/AuthContext'
 
-export function useBundles() {
+export function useBundles(branchId) {
   const { user } = useAuth()
   const [bundles, setBundles] = useState([])
   const [loading, setLoading] = useState(false)
@@ -12,7 +12,7 @@ export function useBundles() {
     setLoading(true)
     setError(null)
     try {
-      const data = await apiClient.get('/api/bundles')
+      const data = await apiClient.get(`/api/bundles${branchId ? `?branch_id=${branchId}` : ''}`)
       setBundles(data || [])
     } catch (err) {
       console.error('Failed to fetch bundles:', err)
@@ -20,7 +20,7 @@ export function useBundles() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [branchId])
 
   useEffect(() => {
     if (user) {

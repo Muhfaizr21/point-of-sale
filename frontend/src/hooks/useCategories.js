@@ -31,7 +31,8 @@ export function useCategories(branchId) {
     setLoading(true)
     setError(null)
     try {
-      await apiClient.post('/api/categories', { name: categoryName })
+      const url = branchId ? `/api/categories?branch_id=${branchId}` : '/api/categories'
+      await apiClient.post(url, { name: categoryName })
       await fetchCategories()
     } catch (err) {
       setError(err.message || 'Gagal menambah kategori')

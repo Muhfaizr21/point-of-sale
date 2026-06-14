@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"point-of-sale/backend/app/middleware"
 	"point-of-sale/backend/app/models"
 	"point-of-sale/backend/app/services"
 	"strconv"
@@ -70,18 +71,24 @@ func (h *AuthHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-		Name     string `json:"name"`
-		Role     string `json:"role"`
-		BranchID *uint  `json:"branch_id,omitempty"`
+		Username   string `json:"username"`
+		Password   string `json:"password"`
+		Name       string `json:"name"`
+		Role       string `json:"role"`
+		BranchID   *uint  `json:"branch_id,omitempty"`
+		MerchantID *uint  `json:"merchant_id,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format tidak valid", 400))
 		return
 	}
+	if req.MerchantID == nil {
+		if user := middleware.GetUser(r); user != nil && user.MerchantID != nil {
+			req.MerchantID = user.MerchantID
+		}
+	}
 
-	user, err := h.svc.CreateUser(r.Context(), req.Username, req.Password, req.Name, req.Role, req.BranchID)
+	user, err := h.svc.CreateUser(r.Context(), req.Username, req.Password, req.Name, req.Role, req.BranchID, req.MerchantID)
 	if err != nil {
 		models.WriteError(w, err)
 		return

@@ -9,11 +9,11 @@ import (
 )
 
 type CategoryService interface {
-	GetAllCategories(ctx context.Context, branchID *uint) ([]models.Category, error)
+	GetAllCategories(ctx context.Context, branchID *uint, merchantID *uint) ([]models.Category, error)
 	GetCategoryByID(ctx context.Context, id uint) (*models.Category, error)
 	CreateCategory(ctx context.Context, category *models.Category) error
 	UpdateCategory(ctx context.Context, category *models.Category) error
-	DeleteCategory(ctx context.Context, id uint) error
+	DeleteCategory(ctx context.Context, id uint, merchantID *uint) error
 }
 
 type categoryService struct {
@@ -25,8 +25,8 @@ func NewCategoryService(repo repositories.CategoryRepository, productRepo reposi
 	return &categoryService{repo: repo, productRepo: productRepo}
 }
 
-func (s *categoryService) GetAllCategories(ctx context.Context, branchID *uint) ([]models.Category, error) {
-	return s.repo.GetAll(ctx, branchID)
+func (s *categoryService) GetAllCategories(ctx context.Context, branchID *uint, merchantID *uint) ([]models.Category, error) {
+	return s.repo.GetAll(ctx, branchID, merchantID)
 }
 
 func (s *categoryService) GetCategoryByID(ctx context.Context, id uint) (*models.Category, error) {
@@ -68,7 +68,7 @@ func (s *categoryService) UpdateCategory(ctx context.Context, category *models.C
 }
 
 // #5: Prevent delete if products reference this category
-func (s *categoryService) DeleteCategory(ctx context.Context, id uint) error {
+func (s *categoryService) DeleteCategory(ctx context.Context, id uint, merchantID *uint) error {
 	cat, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return err
@@ -77,7 +77,7 @@ func (s *categoryService) DeleteCategory(ctx context.Context, id uint) error {
 		return models.NewAPIError(models.ErrNotFound, "Kategori tidak ditemukan", 404)
 	}
 
-	products, err := s.productRepo.GetAll(ctx)
+	products, err := s.productRepo.GetAll(ctx, merchantID)
 	if err != nil {
 		return err
 	}

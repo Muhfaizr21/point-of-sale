@@ -32,6 +32,7 @@ export function Sidebar({ isOpen, onClose, currentTab, onTabSelect, storeName, s
         { id: 'kasir', label: 'Kasir', icon: 'point_of_sale' },
       ]
     },
+
     ...(isOwner ? [{
       title: 'Cabang',
       items: [
@@ -64,6 +65,8 @@ export function Sidebar({ isOpen, onClose, currentTab, onTabSelect, storeName, s
     { id: 'supplier', label: 'Supplier', icon: 'local_shipping' },
     { id: 'tema', label: 'Tema', icon: 'palette' },
     { id: 'hakakses', label: 'Hak Akses', icon: 'admin_panel_settings' },
+    { id: 'support', label: 'Hubungi CS', icon: 'headset_mic' },
+    { id: 'integrasi', label: 'Integrasi & Layanan', icon: 'api' },
     { id: 'pengaturan', label: 'Pengaturan', icon: 'settings' },
   ]
     }
@@ -168,7 +171,7 @@ export function Sidebar({ isOpen, onClose, currentTab, onTabSelect, storeName, s
               </h3>
               {group.items.map((item) => {
                 const isActive = currentTab === item.id
-                const href = `/${item.id}`
+                const href = item.id === 'superadmin' ? '/superadmin' : `/merchant/${item.id}`
                 return (
                   <Link
                     key={item.id}

@@ -137,16 +137,16 @@ export default function LandingPage() {
       <main className="w-full">
         {/* ===== HERO ===== */}
         <div className="relative w-full min-h-[90vh] overflow-hidden" id="beranda" style={{ backgroundColor: '#000000' }}>
-          <div className="absolute inset-0 z-0">
+          <div className="absolute inset-x-0 bottom-0 top-48 z-0" style={{ maskImage: 'linear-gradient(to bottom, transparent, black 20%)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 20%)' }}>
             <Beams beamWidth={3} beamHeight={50} beamNumber={100} lightColor="#e6e8ea" speed={2} noiseIntensity={1.75} scale={0.2} rotation={0} />
           </div>
           <section className="relative z-10 flex flex-col items-center justify-center w-full max-w-5xl mx-auto min-h-[90vh] px-6 pt-32 pb-20 text-center">
             <div className="w-full flex flex-col items-center max-w-4xl">
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.05] mb-6">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.05] mb-5">
                 Kelola Toko <span className="text-indigo-400">10× Lebih</span> Cepat & Cerdas
               </h1>
 
-              <p className="text-xl text-zinc-400 leading-relaxed max-w-2xl mb-10">
+              <p className="text-base md:text-lg text-zinc-400 leading-relaxed max-w-2xl mb-8">
                 Mulai dari kasir, stok, laporan keuangan, hingga analitik pelanggan — semua dalam satu dashboard. 
                 Tanpa ribet, tanpa aplikasi tambahan.
               </p>
@@ -163,11 +163,11 @@ export default function LandingPage() {
               </div>
 
               {/* Hero stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 w-full max-w-3xl">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full max-w-2xl">
                 {stats.map((s, i) => (
-                  <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 md:p-5 shadow-sm hover:shadow-md hover:border-indigo-700 transition-all duration-200">
-                    <p className="text-2xl md:text-3xl font-black text-indigo-400">{s.value}</p>
-                    <p className="text-sm text-zinc-400 mt-1 leading-tight font-medium">{s.label}</p>
+                  <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 md:p-4 shadow-sm hover:shadow-md hover:border-indigo-700 transition-all duration-200">
+                    <p className="text-xl md:text-2xl font-black text-indigo-400">{s.value}</p>
+                    <p className="text-xs text-zinc-400 mt-1 leading-tight font-medium">{s.label}</p>
                   </div>
                 ))}
               </div>

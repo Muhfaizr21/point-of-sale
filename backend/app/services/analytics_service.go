@@ -64,6 +64,7 @@ func (s *analyticsService) GetAnalytics(ctx context.Context, query *models.Analy
 	paymentMap := make(map[string]*models.PaymentMethodSales)
 	productMap := make(map[string]*models.TopProduct)
 	cashierMap := make(map[string]*models.CashierSales)
+	branchMap := make(map[uint]*models.BranchSales)
 
 	var products []models.Product
 	if err := s.db.WithContext(ctx).Unscoped().Find(&products).Error; err != nil {
@@ -145,6 +146,20 @@ func (s *analyticsService) GetAnalytics(ctx context.Context, query *models.Analy
 		}
 		cashierMap[cashierName].Transactions++
 		cashierMap[cashierName].Revenue += order.Total
+
+		// Branch sales
+		if order.Branch != nil {
+			bid := order.Branch.ID
+			if branchMap[bid] == nil {
+				branchName := order.Branch.Name
+				if branchName == "" {
+					branchName = "Tanpa Cabang"
+				}
+				branchMap[bid] = &models.BranchSales{BranchName: branchName}
+			}
+			branchMap[bid].Transactions++
+			branchMap[bid].Revenue += order.Total
+		}
 	}
 
 	// Calculate averages and percentages
@@ -190,6 +205,21 @@ func (s *analyticsService) GetAnalytics(ctx context.Context, query *models.Analy
 		for j := i + 1; j < len(cashierSales); j++ {
 			if cashierSales[i].Revenue < cashierSales[j].Revenue {
 				cashierSales[i], cashierSales[j] = cashierSales[j], cashierSales[i]
+			}
+		}
+	}
+
+	branchSales := make([]models.BranchSales, 0, len(branchMap))
+	for _, b := range branchMap {
+		if totalRevenue > 0 {
+			b.Percent = float64(b.Revenue) / float64(totalRevenue) * 100
+		}
+		branchSales = append(branchSales, *b)
+	}
+	for i := 0; i < len(branchSales)-1; i++ {
+		for j := i + 1; j < len(branchSales); j++ {
+			if branchSales[i].Revenue < branchSales[j].Revenue {
+				branchSales[i], branchSales[j] = branchSales[j], branchSales[i]
 			}
 		}
 	}
@@ -242,6 +272,7 @@ func (s *analyticsService) GetAnalytics(ctx context.Context, query *models.Analy
 		TopProducts:   topProducts,
 		WeeklySales:   weeklySales,
 		CashierSales:  cashierSales,
+		BranchSales:   branchSales,
 	}, nil
 }
 

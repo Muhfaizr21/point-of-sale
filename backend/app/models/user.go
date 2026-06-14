@@ -4,7 +4,8 @@ import "time"
 
 type User struct {
 	ID             uint       `gorm:"primaryKey;autoIncrement" json:"id"`
-	Username       string     `gorm:"type:varchar(50);uniqueIndex;not null" json:"username"`
+	MerchantID     *uint      `gorm:"uniqueIndex:idx_user_merchant" json:"merchant_id,omitempty"`
+	Username       string     `gorm:"type:varchar(50);uniqueIndex:idx_user_merchant;not null" json:"username"`
 	Password       string     `gorm:"type:varchar(255);not null" json:"-"`
 	Role           string     `gorm:"type:varchar(20);default:'cashier'" json:"role"`
 	Name           string     `gorm:"type:varchar(100)" json:"name"`
@@ -14,6 +15,7 @@ type User struct {
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 	Branch         *Branch    `gorm:"foreignKey:BranchID" json:"branch,omitempty"`
+	Merchant       *Merchant  `gorm:"foreignKey:MerchantID" json:"merchant,omitempty"`
 }
 
 type LoginRequest struct {

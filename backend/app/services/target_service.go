@@ -8,10 +8,10 @@ import (
 )
 
 type TargetService interface {
-	GetAllTargets(ctx context.Context) ([]models.DailyTarget, error)
-	GetTargetByDate(ctx context.Context, date string) (*models.DailyTarget, error)
+	GetAllTargets(ctx context.Context, branchID *uint, merchantID *uint) ([]models.DailyTarget, error)
+	GetTargetByDate(ctx context.Context, date string, branchID *uint, merchantID *uint) (*models.DailyTarget, error)
 	UpsertTarget(ctx context.Context, req *models.UpsertTargetRequest) (*models.DailyTarget, error)
-	DeleteTarget(ctx context.Context, date string) error
+	DeleteTarget(ctx context.Context, date string, branchID *uint) error
 }
 
 type targetService struct {
@@ -22,12 +22,12 @@ func NewTargetService(repo repositories.TargetRepository) TargetService {
 	return &targetService{repo: repo}
 }
 
-func (s *targetService) GetAllTargets(ctx context.Context) ([]models.DailyTarget, error) {
-	return s.repo.GetAll(ctx)
+func (s *targetService) GetAllTargets(ctx context.Context, branchID *uint, merchantID *uint) ([]models.DailyTarget, error) {
+	return s.repo.GetAll(ctx, branchID, merchantID)
 }
 
-func (s *targetService) GetTargetByDate(ctx context.Context, date string) (*models.DailyTarget, error) {
-	target, err := s.repo.GetByDate(ctx, date)
+func (s *targetService) GetTargetByDate(ctx context.Context, date string, branchID *uint, merchantID *uint) (*models.DailyTarget, error) {
+	target, err := s.repo.GetByDate(ctx, date, branchID, merchantID)
 	if err != nil {
 		return nil, err
 	}
@@ -63,6 +63,8 @@ func (s *targetService) UpsertTarget(ctx context.Context, req *models.UpsertTarg
 	}
 
 	target := &models.DailyTarget{
+		MerchantID:        req.MerchantID,
+		BranchID:          req.BranchID,
 		Date:              req.Date,
 		RevenueTarget:     req.RevenueTarget,
 		TransactionTarget: req.TransactionTarget,
@@ -73,16 +75,13 @@ func (s *targetService) UpsertTarget(ctx context.Context, req *models.UpsertTarg
 		return nil, err
 	}
 
-	// Fetch it back to return full object (with ID, timestamps)
-	return s.repo.GetByDate(ctx, req.Date)
+	return s.repo.GetByDate(ctx, req.Date, req.BranchID, req.MerchantID)
 }
 
-func (s *targetService) DeleteTarget(ctx context.Context, date string) error {
-	// Validate date format YYYY-MM-DD
+func (s *targetService) DeleteTarget(ctx context.Context, date string, branchID *uint) error {
 	_, err := time.Parse("2006-01-02", date)
 	if err != nil {
 		return models.NewAPIError(models.ErrInvalidInput, "Format tanggal harus YYYY-MM-DD", 400)
 	}
-	
-	return s.repo.Delete(ctx, date)
+	return s.repo.Delete(ctx, date, branchID)
 }

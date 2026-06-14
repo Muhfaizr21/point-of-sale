@@ -4,6 +4,7 @@ import "time"
 
 type Customer struct {
 	ID          uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	MerchantID  *uint     `gorm:"index" json:"merchant_id,omitempty"`
 	Name        string    `gorm:"type:varchar(255);not null" json:"name"`
 	Phone       string    `gorm:"type:varchar(50)" json:"phone"`
 	Email       string    `gorm:"type:varchar(255)" json:"email"`
@@ -16,6 +17,7 @@ type Customer struct {
 }
 
 type CreateCustomerRequest struct {
+	MerchantID  *uint  `json:"merchant_id,omitempty"`
 	Name        string `json:"name"`
 	Phone       string `json:"phone"`
 	Email       string `json:"email"`

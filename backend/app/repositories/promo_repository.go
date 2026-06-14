@@ -8,12 +8,12 @@ import (
 )
 
 type PromoRepository interface {
-	GetAll(ctx context.Context, branchID *uint) ([]models.Promo, error)
+	GetAll(ctx context.Context, branchID *uint, merchantID *uint) ([]models.Promo, error)
 	GetByID(ctx context.Context, id uint) (*models.Promo, error)
 	Create(ctx context.Context, promo *models.Promo) (*models.Promo, error)
 	Update(ctx context.Context, promo *models.Promo) error
 	Delete(ctx context.Context, id uint) error
-	GetActivePromos(ctx context.Context, branchID *uint) ([]models.Promo, error)
+	GetActivePromos(ctx context.Context, branchID *uint, merchantID *uint) ([]models.Promo, error)
 }
 
 type promoRepository struct {
@@ -24,11 +24,14 @@ func NewPromoRepository(db *gorm.DB) PromoRepository {
 	return &promoRepository{db: db}
 }
 
-func (r *promoRepository) GetAll(ctx context.Context, branchID *uint) ([]models.Promo, error) {
+func (r *promoRepository) GetAll(ctx context.Context, branchID *uint, merchantID *uint) ([]models.Promo, error) {
 	var promos []models.Promo
 	db := r.db.WithContext(ctx)
 	if branchID != nil {
 		db = db.Where("branch_id = ?", *branchID)
+	}
+	if merchantID != nil {
+		db = db.Where("merchant_id = ?", *merchantID)
 	}
 	err := db.Order("id desc").Find(&promos).Error
 	return promos, err
@@ -59,11 +62,14 @@ func (r *promoRepository) Delete(ctx context.Context, id uint) error {
 	return r.db.WithContext(ctx).Delete(&models.Promo{}, id).Error
 }
 
-func (r *promoRepository) GetActivePromos(ctx context.Context, branchID *uint) ([]models.Promo, error) {
+func (r *promoRepository) GetActivePromos(ctx context.Context, branchID *uint, merchantID *uint) ([]models.Promo, error) {
 	var promos []models.Promo
 	db := r.db.WithContext(ctx).Where("active = ?", true)
 	if branchID != nil {
 		db = db.Where("branch_id = ?", *branchID)
+	}
+	if merchantID != nil {
+		db = db.Where("merchant_id = ?", *merchantID)
 	}
 	err := db.Order("id desc").Find(&promos).Error
 	return promos, err

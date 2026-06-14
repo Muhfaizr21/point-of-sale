@@ -33,6 +33,9 @@ func (h *OrderHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		if user.BranchID != nil {
 			req.BranchID = user.BranchID
 		}
+		if user.MerchantID != nil {
+			req.MerchantID = user.MerchantID
+		}
 	}
 
 	order, err := h.service.Checkout(r.Context(), &req, cashierName)
@@ -114,7 +117,8 @@ func (h *OrderHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		query.BranchID = user.BranchID
 	}
 
-	result, err := h.service.GetFilteredOrders(r.Context(), query)
+	merchantID := getMerchantID(r)
+	result, err := h.service.GetFilteredOrders(r.Context(), query, merchantID)
 	if err != nil {
 		models.WriteError(w, err)
 		return
@@ -156,6 +160,16 @@ func (h *OrderHandler) Refund(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	existing, err := h.service.GetOrderByID(r.Context(), uint(id))
+	if err != nil {
+		models.WriteError(w, err)
+		return
+	}
+	if user := middleware.GetUser(r); user != nil && user.BranchID != nil && existing.BranchID != nil && *existing.BranchID != *user.BranchID {
+		models.WriteError(w, models.NewAPIError(models.ErrForbidden, "Data ini bukan milik cabang Anda", 403))
+		return
+	}
+
 	var req models.RefundOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "Format data tidak valid", 400))
@@ -177,6 +191,16 @@ func (h *OrderHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseUint(r.PathValue("id"), 10, 32)
 	if err != nil {
 		models.WriteError(w, models.NewAPIError(models.ErrInvalidInput, "ID pesanan tidak valid", 400))
+		return
+	}
+
+	existing, err := h.service.GetOrderByID(r.Context(), uint(id))
+	if err != nil {
+		models.WriteError(w, err)
+		return
+	}
+	if user := middleware.GetUser(r); user != nil && user.BranchID != nil && existing.BranchID != nil && *existing.BranchID != *user.BranchID {
+		models.WriteError(w, models.NewAPIError(models.ErrForbidden, "Data ini bukan milik cabang Anda", 403))
 		return
 	}
 

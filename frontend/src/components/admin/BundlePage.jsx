@@ -93,8 +93,8 @@ export function BundlePage({ products, onToggleSidebar, activeBranch = null }) {
       let iconUrl = formIcon
       if (imageFile) { const u = await apiClient.uploadFile('/api/upload', imageFile); iconUrl = u.url }
       const data = { name: formName, price: parseInt(formPrice), icon: iconUrl, items: formItems.map(i => ({ product_id: parseInt(i.product_id), quantity: parseInt(i.quantity) || 1 })) }
-      if (editing) await apiClient.put(`/api/bundles/${editing.id}`, data)
-      else await apiClient.post('/api/bundles', data)
+      if (editing) await apiClient.put(`/api/bundles/${editing.id}${activeBranch ? `?branch_id=${activeBranch}` : ''}`, data)
+      else await apiClient.post(`/api/bundles${activeBranch ? `?branch_id=${activeBranch}` : ''}`, data)
       await fetchBundles(); setIsModalOpen(false)
     } catch (err) { setFormError(err.message) }
     finally { setIsSubmitting(false) }
@@ -184,7 +184,7 @@ export function BundlePage({ products, onToggleSidebar, activeBranch = null }) {
                     <td className="p-md">
                       <button type="button" onClick={async () => {
                         try {
-                          await apiClient.put(`/api/bundles/${bundle.id}`, {
+                          await apiClient.put(`/api/bundles/${bundle.id}${activeBranch ? `?branch_id=${activeBranch}` : ''}`, {
                             name: bundle.name, price: bundle.price, icon: bundle.icon || '',
                             items: (bundle.items || []).map(i => ({ product_id: i.product_id, quantity: i.quantity })),
                             active: !bundle.active,

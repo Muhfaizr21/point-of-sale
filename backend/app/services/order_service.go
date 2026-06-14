@@ -15,7 +15,7 @@ import (
 type OrderService interface {
 	Checkout(ctx context.Context, req *models.CreateOrderRequest, cashierName string) (*models.Order, error)
 	GetAllOrders(ctx context.Context) ([]models.Order, error)
-	GetFilteredOrders(ctx context.Context, query *models.OrderQuery) (*models.OrderListResponse, error)
+	GetFilteredOrders(ctx context.Context, query *models.OrderQuery, merchantID *uint) (*models.OrderListResponse, error)
 	GetOrderByID(ctx context.Context, id uint) (*models.Order, error)
 	UpdateOrder(ctx context.Context, id uint, req *models.UpdateOrderRequest) (*models.Order, error)
 	RefundOrder(ctx context.Context, id uint, req *models.RefundOrderRequest) (*models.Order, error)
@@ -49,7 +49,7 @@ func (s *orderService) GetOrderByID(ctx context.Context, id uint) (*models.Order
 	return s.orderRepo.GetByID(ctx, id)
 }
 
-func (s *orderService) GetFilteredOrders(ctx context.Context, query *models.OrderQuery) (*models.OrderListResponse, error) {
+func (s *orderService) GetFilteredOrders(ctx context.Context, query *models.OrderQuery, merchantID *uint) (*models.OrderListResponse, error) {
 	if query.Page < 1 {
 		query.Page = 1
 	}
@@ -63,7 +63,7 @@ func (s *orderService) GetFilteredOrders(ctx context.Context, query *models.Orde
 		query.SortBy = "created_at"
 	}
 
-	orders, total, err := s.orderRepo.GetFiltered(ctx, query)
+	orders, total, err := s.orderRepo.GetFiltered(ctx, query, merchantID)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,7 @@ func (s *orderService) Checkout(ctx context.Context, req *models.CreateOrderRequ
 		}
 
 		// Evaluate promos
-		_, promoDiscount, err := s.promoSvc.EvaluatePromos(ctx, orderItems, subtotal, req.BranchID)
+		_, promoDiscount, err := s.promoSvc.EvaluatePromos(ctx, orderItems, subtotal, req.BranchID, req.MerchantID)
 		if err != nil {
 			return err
 		}
